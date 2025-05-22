@@ -35,12 +35,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 export default function EntrepreneurSettingsPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userData = localStorage.getItem("userData")
+      if (userData) setUser(JSON.parse(userData))
+    }
+  }, [])
 
   const handleLogout = () => {
     // In a real app, you would clear authentication state here
@@ -151,8 +159,8 @@ export default function EntrepreneurSettingsPage() {
         <aside className="hidden w-64 border-r md:block">
           <div className="flex h-full flex-col gap-2 p-4">
             <div className="py-2">
-              <h2 className="text-lg font-semibold">John Doe</h2>
-              <p className="text-sm text-gray-500">Entrepreneur</p>
+              <h2 className="text-lg font-semibold">{user?.name || "Entrepreneur"}</h2>
+              <p className="text-sm text-gray-500">{user?.role || "entrepreneur"}</p>
             </div>
             <nav className="flex flex-col gap-1">
               <Link

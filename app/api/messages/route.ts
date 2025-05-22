@@ -4,20 +4,34 @@ import { Message } from '@/models/Message';
 import { Conversation } from '@/models/Conversation';
 import User from '@/lib/models/User';
 
-// GET - Fetch messages for a conversation
+// GET - Fetch messages for a conversation or by receiver
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId');
+    const receiverId = searchParams.get('receiverId');
     
+    await connectToDatabase();
+
+    if (receiverId) {
+      // Fetch all messages where receiver is receiverId
+      const messages = await Message.find({ receiver: receiverId })
+        .populate('sender', 'name role')
+        .populate('receiver', 'name role')
+        .populate('project', 'title')
+        .sort({ createdAt: -1 });
+      return NextResponse.json({
+        success: true,
+        messages: messages
+      });
+    }
+
     if (!conversationId) {
       return NextResponse.json(
-        { success: false, error: 'Conversation ID is required' },
+        { success: false, error: 'Conversation ID or receiverId is required' },
         { status: 400 }
       );
     }
-    
-    await connectToDatabase();
     
     const messages = await Message.find({ conversation: conversationId })
       .populate('sender', 'name role')

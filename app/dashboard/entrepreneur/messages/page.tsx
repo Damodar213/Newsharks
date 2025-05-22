@@ -16,77 +16,87 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-
-// Mock messages
-const mockMessages = [
-  {
-    id: 1,
-    from: "Jane Smith",
-    avatar: "JS",
-    message: "I'm interested in your EcoPackage project. Can we schedule a call?",
-    time: "2 hours ago",
-    unread: true,
-    project: "EcoPackage - Sustainable Packaging Solution",
-  },
-  {
-    id: 2,
-    from: "Robert Johnson",
-    avatar: "RJ",
-    message: "Great presentation on SmartGarden. I have some questions about the technology.",
-    time: "Yesterday",
-    unread: false,
-    project: "SmartGarden - IoT Plant Care System",
-  },
-  {
-    id: 3,
-    from: "Sarah Williams",
-    avatar: "SW",
-    message: "Congratulations on reaching your funding goal for SmartGarden!",
-    time: "3 days ago",
-    unread: false,
-    project: "SmartGarden - IoT Plant Care System",
-  },
-  {
-    id: 4,
-    from: "Michael Chen",
-    avatar: "MC",
-    message: "I'd like to discuss potential investment in your HealthTrack app.",
-    time: "4 days ago",
-    unread: false,
-    project: "HealthTrack - Wellness Monitoring App",
-  },
-  {
-    id: 5,
-    from: "Alex Smith",
-    avatar: "AS",
-    message: "Can you provide more details about the market research for EcoPackage?",
-    time: "1 week ago",
-    unread: false,
-    project: "EcoPackage - Sustainable Packaging Solution",
-  },
-]
+import { ReplyDialog } from "@/components/ContactDialog"
 
 export default function EntrepreneurMessagesPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [user, setUser] = useState<any>(null)
+  const [messages, setMessages] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false)
+  const [replyMessage, setReplyMessage] = useState<any | null>(null)
+  const [replyConversationId, setReplyConversationId] = useState<string | null>(null)
   const router = useRouter()
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userData = localStorage.getItem("userData")
+      if (userData) setUser(JSON.parse(userData))
+    }
+  }, [])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (user?._id) {
+      setLoading(true);
+      const fetchMsgs = () => {
+        fetch(`/api/messages?receiverId=${user._id}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) setMessages(data.messages)
+            setLoading(false)
+          })
+      };
+      fetchMsgs();
+      interval = setInterval(fetchMsgs, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user]);
+
+  // Ensure correct conversationId for ReplyDialog
+  useEffect(() => {
+    const fetchConversationId = async () => {
+      if (replyMessage && !replyMessage.conversation && user?._id && replyMessage.sender?._id && replyMessage.project?._id) {
+        // Find or create the conversation between entrepreneur and sender for this project
+        const res = await fetch("/api/messages/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            participants: [user._id, replyMessage.sender._id],
+            project: replyMessage.project._id,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setReplyConversationId(data.conversation._id);
+        }
+      } else if (replyMessage && replyMessage.conversation) {
+        setReplyConversationId(replyMessage.conversation);
+      } else {
+        setReplyConversationId(null);
+      }
+    };
+    fetchConversationId();
+  }, [replyMessage, user]);
+
   const handleLogout = () => {
-    // In a real app, you would clear authentication state here
-    console.log("Logging out...")
+    localStorage.removeItem("userData")
     router.push("/login")
   }
 
   const filteredMessages = searchQuery
-    ? mockMessages.filter(
+    ? messages.filter(
         (message) =>
-          message.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          message.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          message.project.toLowerCase().includes(searchQuery.toLowerCase()),
+          message.sender?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          message.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          message.project?.title?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : mockMessages
+    : messages
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -191,8 +201,8 @@ export default function EntrepreneurMessagesPage() {
         <aside className="hidden w-64 border-r md:block">
           <div className="flex h-full flex-col gap-2 p-4">
             <div className="py-2">
-              <h2 className="text-lg font-semibold">John Doe</h2>
-              <p className="text-sm text-gray-500">Entrepreneur</p>
+              <h2 className="text-lg font-semibold">{user?.name || "Entrepreneur"}</h2>
+              <p className="text-sm text-gray-500">{user?.role || "entrepreneur"}</p>
             </div>
             <nav className="flex flex-col gap-1">
               <Link
@@ -259,38 +269,9 @@ export default function EntrepreneurMessagesPage() {
             </div>
 
             <div className="grid gap-4">
-              {filteredMessages.map((message) => (
-                <Card key={message.id} className={message.unread ? "border-primary/50" : ""}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>{message.avatar}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-base">{message.from}</CardTitle>
-                        <CardDescription className="text-xs">{message.time}</CardDescription>
-                      </div>
-                      {message.unread && (
-                        <Badge variant="secondary" className="ml-auto">
-                          New
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm mb-2">{message.message}</p>
-                    <p className="text-xs text-gray-500">Project: {message.project}</p>
-                  </CardContent>
-                  <CardFooter className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm">
-                      Schedule Call
-                    </Button>
-                    <Button size="sm">Reply</Button>
-                  </CardFooter>
-                </Card>
-              ))}
-
-              {filteredMessages.length === 0 && (
+              {loading ? (
+                <div>Loading...</div>
+              ) : filteredMessages.length === 0 ? (
                 <div className="text-center py-12">
                   <MessageSquare className="mx-auto h-12 w-12 text-gray-300" />
                   <h3 className="mt-4 text-lg font-medium">No messages found</h3>
@@ -298,8 +279,62 @@ export default function EntrepreneurMessagesPage() {
                     {searchQuery ? "Try a different search term" : "You don't have any messages yet"}
                   </p>
                 </div>
+              ) : (
+                filteredMessages.map((message) => (
+                  <Card key={message._id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>
+                            {message.sender?.name
+                              ? message.sender.name
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")
+                              : "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-base">{message.sender?.name || "Unknown"}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {new Date(message.createdAt).toLocaleString()}
+                          </CardDescription>
+                        </div>
+                        {!message.read && (
+                          <Badge variant="secondary" className="ml-auto">
+                            New
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm mb-2">{message.content}</p>
+                      <p className="text-xs text-gray-500">
+                        Project: {message.project?.title || "N/A"}
+                      </p>
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm">
+                        Schedule Call
+                      </Button>
+                      <Button size="sm" onClick={() => { setReplyMessage(message); setReplyDialogOpen(true); }}>
+                        Reply
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
               )}
             </div>
+            {replyMessage && replyConversationId && (
+              <ReplyDialog
+                isOpen={replyDialogOpen}
+                onClose={() => { setReplyDialogOpen(false); setReplyMessage(null); setReplyConversationId(null); }}
+                recipientName={replyMessage.sender?.name || "Unknown"}
+                conversationId={replyConversationId}
+                projectId={replyMessage.project?._id || replyMessage.project}
+                recipientId={replyMessage.sender?._id}
+              />
+            )}
           </div>
         </main>
       </div>

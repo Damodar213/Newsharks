@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 // Mock scheduled video calls
@@ -88,7 +88,15 @@ const mockPastCalls = [
 
 export default function EntrepreneurVideoCallsPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userData = localStorage.getItem("userData")
+      if (userData) setUser(JSON.parse(userData))
+    }
+  }, [])
 
   const handleLogout = () => {
     // In a real app, you would clear authentication state here
@@ -110,43 +118,23 @@ export default function EntrepreneurVideoCallsPage() {
               </SheetTrigger>
               <SheetContent side="left" className="w-64 sm:max-w-sm">
                 <nav className="flex flex-col gap-4 mt-8">
-                  <Link
-                    href="/dashboard/entrepreneur"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard/entrepreneur" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setMobileMenuOpen(false)}>
                     <TrendingUp className="h-5 w-5" />
                     <span>Dashboard</span>
                   </Link>
-                  <Link
-                    href="/dashboard/entrepreneur/projects"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard/entrepreneur/projects" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setMobileMenuOpen(false)}>
                     <LightbulbIcon className="h-5 w-5" />
                     <span>My Projects</span>
                   </Link>
-                  <Link
-                    href="/dashboard/entrepreneur/messages"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard/entrepreneur/messages" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setMobileMenuOpen(false)}>
                     <MessageSquare className="h-5 w-5" />
                     <span>Messages</span>
                   </Link>
-                  <Link
-                    href="/dashboard/entrepreneur/video-calls"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard/entrepreneur/video-calls" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setMobileMenuOpen(false)}>
                     <Video className="h-5 w-5" />
                     <span>Video Calls</span>
                   </Link>
-                  <Link
-                    href="/dashboard/entrepreneur/settings"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/dashboard/entrepreneur/settings" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setMobileMenuOpen(false)}>
                     <Settings className="h-5 w-5" />
                     <span>Settings</span>
                   </Link>
@@ -161,9 +149,7 @@ export default function EntrepreneurVideoCallsPage() {
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                3
-              </span>
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">3</span>
               <span className="sr-only">Notifications</span>
             </Button>
             <DropdownMenu>
@@ -199,44 +185,29 @@ export default function EntrepreneurVideoCallsPage() {
         <aside className="hidden w-64 border-r md:block">
           <div className="flex h-full flex-col gap-2 p-4">
             <div className="py-2">
-              <h2 className="text-lg font-semibold">John Doe</h2>
-              <p className="text-sm text-gray-500">Entrepreneur</p>
+              <h2 className="text-lg font-semibold">{user?.name || "Entrepreneur"}</h2>
+              <p className="text-sm text-gray-500">{user?.role || "entrepreneur"}</p>
             </div>
             <nav className="flex flex-col gap-1">
-              <Link
-                href="/dashboard/entrepreneur"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
+              <Link href="/dashboard/entrepreneur" className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted">
                 <TrendingUp className="h-5 w-5" />
                 <span>Dashboard</span>
               </Link>
-              <Link
-                href="/dashboard/entrepreneur/projects"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
+              <Link href="/dashboard/entrepreneur/projects" className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted">
                 <LightbulbIcon className="h-5 w-5" />
                 <span>My Projects</span>
               </Link>
-              <Link
-                href="/dashboard/entrepreneur/messages"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
+              <Link href="/dashboard/entrepreneur/messages" className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted">
                 <MessageSquare className="h-5 w-5" />
                 <span>Messages</span>
                 <Badge className="ml-auto">3</Badge>
               </Link>
-              <Link
-                href="/dashboard/entrepreneur/video-calls"
-                className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-primary"
-              >
+              <Link href="/dashboard/entrepreneur/video-calls" className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-primary">
                 <Video className="h-5 w-5" />
                 <span>Video Calls</span>
                 <Badge className="ml-auto">2</Badge>
               </Link>
-              <Link
-                href="/dashboard/entrepreneur/settings"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
+              <Link href="/dashboard/entrepreneur/settings" className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted">
                 <Settings className="h-5 w-5" />
                 <span>Settings</span>
               </Link>
@@ -261,7 +232,6 @@ export default function EntrepreneurVideoCallsPage() {
                 Schedule Call
               </Button>
             </div>
-
             <Tabs defaultValue="upcoming">
               <TabsList>
                 <TabsTrigger value="upcoming">Upcoming Calls</TabsTrigger>
@@ -303,14 +273,6 @@ export default function EntrepreneurVideoCallsPage() {
                       </CardFooter>
                     </Card>
                   ))}
-
-                  {mockScheduledCalls.length === 0 && (
-                    <div className="text-center py-12">
-                      <Video className="mx-auto h-12 w-12 text-gray-300" />
-                      <h3 className="mt-4 text-lg font-medium">No upcoming calls</h3>
-                      <p className="mt-1 text-gray-500">Schedule a call with an investor to discuss your projects</p>
-                    </div>
-                  )}
                 </div>
               </TabsContent>
               <TabsContent value="past" className="mt-4 space-y-4">
@@ -351,5 +313,5 @@ export default function EntrepreneurVideoCallsPage() {
         </main>
       </div>
     </div>
-  )
+  );
 }

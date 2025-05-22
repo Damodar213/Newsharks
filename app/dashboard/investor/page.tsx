@@ -34,6 +34,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
+import { ContactDialog } from "@/components/ContactDialog"
+import { ProjectDetailsDialog } from "@/components/ProjectDetailsDialog"
 
 interface Project {
   _id: string;
@@ -77,6 +79,10 @@ export default function InvestorDashboard() {
   const [investments, setInvestments] = useState<Investment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userData, setUserData] = useState<any>(null)
+  const [contactDialogOpen, setContactDialogOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  const [detailsProject, setDetailsProject] = useState<Project | null>(null)
   const router = useRouter()
 
   // Load user data from localStorage
@@ -230,6 +236,16 @@ export default function InvestorDashboard() {
     localStorage.removeItem('userData');
     router.push('/login');
   };
+
+  const handleContactClick = (project: Project) => {
+    setSelectedProject(project)
+    setContactDialogOpen(true)
+  }
+
+  const handleViewDetailsClick = (project: Project) => {
+    setDetailsProject(project)
+    setDetailsDialogOpen(true)
+  }
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -514,16 +530,12 @@ export default function InvestorDashboard() {
                           </div>
                         </CardContent>
                         <CardFooter className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/investor/messages?project=${project._id}`}>
-                            Contact
-                              </Link>
+                            <Button variant="outline" size="sm" onClick={() => handleContactClick(project)}>
+                              Contact
                             </Button>
-                            <Button size="sm" asChild>
-                              <Link href={`/dashboard/investor/projects/${project._id}`}>
-                                View Details
-                              </Link>
-                          </Button>
+                            <Button size="sm" onClick={() => handleViewDetailsClick(project)}>
+                              View Details
+                            </Button>
                         </CardFooter>
                       </Card>
                     ))}
@@ -574,15 +586,33 @@ export default function InvestorDashboard() {
                           </div>
                         </CardContent>
                         <CardFooter className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/investor/messages?project=${investment.project._id}`}>
-                            Contact Entrepreneur
-                              </Link>
-                          </Button>
-                            <Button size="sm" asChild>
-                              <Link href={`/dashboard/investor/projects/${investment.project._id}`}>
-                                View Details
-                            </Link>
+                            <Button variant="outline" size="sm" onClick={() => handleContactClick({
+                              _id: investment.project._id,
+                              title: investment.project.title,
+                              entrepreneur: investment.project.entrepreneur,
+                              description: "",
+                              category: "",
+                              fundingGoal: 0,
+                              currentFunding: 0,
+                              investors: 0,
+                              approved: false,
+                              createdAt: "",
+                            })}>
+                              Contact Entrepreneur
+                            </Button>
+                            <Button size="sm" onClick={() => handleViewDetailsClick({
+                              _id: investment.project._id,
+                              title: investment.project.title,
+                              entrepreneur: investment.project.entrepreneur,
+                              description: "",
+                              category: "",
+                              fundingGoal: 0,
+                              currentFunding: 0,
+                              investors: 0,
+                              approved: false,
+                              createdAt: "",
+                            })}>
+                              View Details
                             </Button>
                         </CardFooter>
                       </Card>
@@ -595,6 +625,28 @@ export default function InvestorDashboard() {
           </div>
         </main>
       </div>
+      {selectedProject && (
+        <ContactDialog
+          isOpen={contactDialogOpen}
+          onClose={() => {
+            setContactDialogOpen(false)
+            setSelectedProject(null)
+          }}
+          entrepreneurName={selectedProject.entrepreneur.name}
+          projectId={selectedProject._id}
+          projectTitle={selectedProject.title}
+        />
+      )}
+      {detailsProject && (
+        <ProjectDetailsDialog
+          isOpen={detailsDialogOpen}
+          onClose={() => {
+            setDetailsDialogOpen(false)
+            setDetailsProject(null)
+          }}
+          project={detailsProject}
+        />
+      )}
     </div>
   )
 }
