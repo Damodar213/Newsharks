@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ArrowRight, BarChart3, LightbulbIcon, TrendingUp, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import SplineScene from "@/components/SplineScene"
 
 export default function Home() {
   return (
@@ -39,12 +40,12 @@ export default function Home() {
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800">
           <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
-              <div className="space-y-4">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            <div className="flex flex-col lg:flex-row items-center gap-8">
+              <div className="flex-1 space-y-4">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl xl:text-7xl">
                   Connect Your Ideas with Investors Who Believe in You
                 </h1>
-                <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+                <p className="text-gray-500 md:text-xl/relaxed lg:text-xl/relaxed xl:text-2xl/relaxed dark:text-gray-400">
                   NEW SHARKS bridges the gap between innovative entrepreneurs and potential investors, making funding
                   more accessible, transparent, and efficient.
                 </p>
@@ -62,14 +63,11 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
-              <div className="flex justify-center">
-                <div className="relative w-full max-w-[500px] aspect-video rounded-xl overflow-hidden shadow-xl">
-                  <img
-                    src="/placeholder.svg?height=400&width=600"
-                    alt="Entrepreneurs and investors collaborating"
-                    className="object-cover w-full h-full"
+              <div className="flex-1 w-full h-[700px]">
+                <SplineScene 
+                  sceneUrl="https://prod.spline.design/IiB-jBzRJ5u4f2j1/scene.splinecode"
+                  className="w-full h-full rounded-xl shadow-2xl"
                   />
-                </div>
               </div>
             </div>
           </div>

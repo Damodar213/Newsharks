@@ -1,82 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User, { UserRole } from '@/lib/models/User';
-import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
-  console.log("Registration API called");
-  
   try {
-    // Connect to the database
-    const db = await connectToDatabase();
-    console.log("Database connected successfully");
+    // Parse request body
+    const body = await request.json().catch(() => null);
     
-    // Get registration data from request body
-    const body = await request.json();
-    console.log("Registration body received");
-    
+    if (!body) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
     const { name, email, password, role } = body;
-    
+
     // Validate required fields
     if (!name || !email || !password) {
-      console.log("Missing required fields");
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Name, email, and password are required' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Name, email, and password are required' },
+        { status: 400 }
+      );
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return NextResponse.json(
+        { success: false, error: 'Password must be at least 6 characters long' },
+        { status: 400 }
+      );
+    }
+
+    // Validate role if provided
+    if (role && !Object.values(UserRole).includes(role)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid role' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Connecting to database...');
+    await connectToDatabase();
+    console.log('Connected to database');
+
+    // Check if user already exists
+    console.log('Checking if user exists...');
+    const existingUser = await User.findOne({ email });
     
-    // Use a valid role or default to entrepreneur
-    const userRole = role === "investor" ? UserRole.INVESTOR : 
-                     role === "admin" ? UserRole.ADMIN : 
-                     UserRole.ENTREPRENEUR;
-    
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Create new user with hashed password
-    const newUser = new User({
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, error: 'Email already registered' },
+        { status: 409 }
+      );
+    }
+
+    // Create new user
+    console.log('Creating new user...');
+    const user = await User.create({
       name,
       email,
-      password: hashedPassword,
-      role: userRole,
-      bio: '',
-      profilePicture: '',
+      password,
+      role: role || UserRole.ENTREPRENEUR,
     });
-    
-    await newUser.save();
-    console.log("User created successfully:", newUser._id);
-    
-    // Return success response
-    return NextResponse.json({ 
-      success: true, 
+
+    // Remove password from response
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture,
+      bio: user.bio,
+      location: user.location,
+      website: user.website,
+      socialLinks: user.socialLinks,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return NextResponse.json({
+      success: true,
       message: 'Registration successful',
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
-      }
-    }, { status: 201 });
-    
+      user: userResponse,
+    });
   } catch (error) {
-    console.error('Registration error details:', error);
-    
-    // Check for specific MongoDB errors
-    const err = error as any;
-    
-    // Duplicate key error (email already exists)
-    if (err.code === 11000) {
-      return NextResponse.json({ 
+    console.error('Registration error:', error);
+    return NextResponse.json(
+      { 
         success: false, 
-        error: 'Email is already registered'
-      }, { status: 400 });
-    }
-    
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Registration failed',
-      details: err.message || 'Unknown error'
-    }, { status: 500 });
+        error: 'An error occurred during registration',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 } 

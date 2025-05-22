@@ -91,8 +91,8 @@ export async function GET(request: NextRequest) {
       .populate('entrepreneur', 'name email')
       .sort({ createdAt: -1 });
     
-    return NextResponse.json({
-      success: true,
+    return NextResponse.json({ 
+      success: true, 
       projects: projects
     });
   } catch (error) {

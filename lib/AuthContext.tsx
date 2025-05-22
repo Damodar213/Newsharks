@@ -59,9 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || "Login failed");
       }
 
+      if (!data.user) {
+        throw new Error("Invalid response from server");
+      }
+
+      console.log("Login response data:", data);
+
       // Store user data in localStorage
       localStorage.setItem('userData', JSON.stringify({
-        id: data.user._id,
+        _id: data.user._id,
         name: data.user.name,
         email: data.user.email,
         role: data.user.role,

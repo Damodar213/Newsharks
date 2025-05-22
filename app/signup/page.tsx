@@ -85,7 +85,7 @@ export default function SignupPage() {
 
       // After successful registration, store user data in localStorage
       localStorage.setItem('userData', JSON.stringify({
-        id: data.user.id,
+        _id: data.user._id,
         name: data.user.name,
         email: data.user.email,
         role: data.user.role,
