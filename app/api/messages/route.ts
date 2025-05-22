@@ -1,97 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import Message from '@/lib/models/Message';
+import { Message } from '@/models/Message';
+import { Conversation } from '@/models/Conversation';
 import User from '@/lib/models/User';
 
-// GET handler to fetch messages (conversation between users)
-export async function GET(request: NextRequest) {
+// GET - Fetch messages for a conversation
+export async function GET(request: Request) {
   try {
-    // Connect to the database
-    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
+    const conversationId = searchParams.get('conversationId');
     
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const sender = searchParams.get('sender');
-    const receiver = searchParams.get('receiver');
-    const pitch = searchParams.get('pitch');
-    
-    // Validate required params
-    if (!sender || !receiver) {
+    if (!conversationId) {
       return NextResponse.json(
-        { success: false, error: 'Sender and receiver IDs are required' },
+        { success: false, error: 'Conversation ID is required' },
         { status: 400 }
       );
     }
     
-    // Build the query for a conversation between two users
-    const query: any = {
-      $or: [
-        { sender, receiver },
-        { sender: receiver, receiver: sender }, // Get messages from both directions
-      ],
-    };
+    await connectToDatabase();
     
-    // If pitch is specified, filter by pitch
-    if (pitch) {
-      query.relatedPitch = pitch;
-    }
+    const messages = await Message.find({ conversation: conversationId })
+      .populate('sender', 'name role')
+      .populate('receiver', 'name role')
+      .sort({ createdAt: 1 });
     
-    // Fetch messages from the database
-    const messages = await Message.find(query)
-      .populate('sender', 'name email profilePicture')
-      .populate('receiver', 'name email profilePicture')
-      .sort({ createdAt: 1 }) // Sort by creation date ascending
-      .limit(100);
-    
-    return NextResponse.json({ success: true, data: messages }, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      messages: messages
+    });
   } catch (error) {
     console.error('Error fetching messages:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch messages' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch messages' },
+      { status: 500 }
+    );
   }
 }
 
-// POST handler to create a new message
-export async function POST(request: NextRequest) {
+// POST - Send a new message
+export async function POST(request: Request) {
   try {
-    // Connect to the database
-    await connectToDatabase();
-    
-    // Get request body
     const body = await request.json();
+    const { conversationId, content, sender, receiver, project } = body;
     
-    // Validate required fields
-    if (!body.sender || !body.receiver || !body.content) {
+    if (!conversationId || !content || !sender || !receiver || !project) {
       return NextResponse.json(
-        { success: false, error: 'Sender, receiver, and content are required' },
+        { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
     
-    // Validate that sender and receiver exist
-    const [senderExists, receiverExists] = await Promise.all([
-      User.exists({ _id: body.sender }),
-      User.exists({ _id: body.receiver })
-    ]);
+    await connectToDatabase();
     
-    if (!senderExists || !receiverExists) {
-      return NextResponse.json(
-        { success: false, error: 'Sender or receiver not found' },
-        { status: 404 }
-      );
-    }
+    // Create new message
+    const newMessage = new Message({
+      conversation: conversationId,
+      content,
+      sender,
+      receiver,
+      project,
+      read: false
+    });
     
-    // Create a new message
-    const newMessage = await Message.create(body);
+    await newMessage.save();
     
-    // Populate sender and receiver info
-    await newMessage.populate([
-      { path: 'sender', select: 'name email profilePicture' },
-      { path: 'receiver', select: 'name email profilePicture' }
-    ]);
+    // Update conversation's last message and unread count
+    await Conversation.findByIdAndUpdate(conversationId, {
+      lastMessage: newMessage._id,
+      $inc: { unreadCount: 1 }
+    });
     
-    return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
+    // Populate sender and receiver details
+    await newMessage.populate('sender', 'name role');
+    await newMessage.populate('receiver', 'name role');
+    
+    return NextResponse.json({
+      success: true,
+      message: newMessage
+    });
   } catch (error) {
-    console.error('Error creating message:', error);
-    return NextResponse.json({ success: false, error: 'Failed to create message' }, { status: 500 });
+    console.error('Error sending message:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to send message' },
+      { status: 500 }
+    );
   }
 } 

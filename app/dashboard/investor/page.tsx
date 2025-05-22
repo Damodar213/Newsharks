@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Bell,
   Filter,
@@ -32,112 +33,202 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
 
-// Mock data for available projects
-const mockProjects = [
-  {
-    id: 1,
-    title: "EcoPackage - Sustainable Packaging Solution",
-    description: "Biodegradable packaging materials made from agricultural waste",
-    entrepreneur: "Sarah Johnson",
-    fundingGoal: 50000,
-    currentFunding: 35000,
-    investors: 12,
-    status: "active",
-    category: "Sustainability",
-    createdAt: "2023-10-15",
-    matchScore: 95,
-  },
-  {
-    id: 2,
-    title: "HealthTrack - Wellness Monitoring App",
-    description: "Mobile application for comprehensive health tracking and analysis",
-    entrepreneur: "Michael Chen",
-    fundingGoal: 15000,
-    currentFunding: 3000,
-    investors: 2,
-    status: "active",
-    category: "Health",
-    createdAt: "2023-11-05",
-    matchScore: 87,
-  },
-  {
-    id: 3,
-    title: "UrbanFarm - Vertical Farming Technology",
-    description: "Innovative vertical farming solution for urban environments",
-    entrepreneur: "Emma Rodriguez",
-    fundingGoal: 75000,
-    currentFunding: 42000,
-    investors: 15,
-    status: "active",
-    category: "Agriculture",
-    createdAt: "2023-09-22",
-    matchScore: 82,
-  },
-  {
-    id: 4,
-    title: "EduTech - AI-Powered Learning Platform",
-    description: "Personalized education platform using artificial intelligence",
-    entrepreneur: "David Kim",
-    fundingGoal: 30000,
-    currentFunding: 18000,
-    investors: 7,
-    status: "active",
-    category: "Education",
-    createdAt: "2023-10-30",
-    matchScore: 78,
-  },
-]
+interface Project {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  fundingGoal: number;
+  currentFunding: number;
+  investors: number;
+  entrepreneur: {
+    name: string;
+    email: string;
+  };
+  approved: boolean;
+  createdAt: string;
+  matchScore?: number;
+}
 
-// Mock data for investor's investments
-const mockInvestments = [
-  {
-    id: 1,
-    title: "SmartGarden - IoT Plant Care System",
-    entrepreneur: "John Doe",
-    amountInvested: 10000,
-    equityPercentage: 5,
-    status: "active",
-    returnToDate: 0,
-    investedDate: "2023-09-15",
-  },
-  {
-    id: 2,
-    title: "DeliveryDrones - Last Mile Delivery Solution",
-    entrepreneur: "Lisa Wang",
-    amountInvested: 25000,
-    equityPercentage: 8,
-    status: "profitable",
-    returnToDate: 3500,
-    investedDate: "2023-06-22",
-  },
-]
-
-// Mock scheduled video calls
-const mockScheduledCalls = [
-  {
-    id: "123456",
-    with: "John Doe",
-    avatar: "JD",
-    project: "SmartGarden - IoT Plant Care System",
-    date: "Today",
-    time: "2:30 PM",
-    status: "upcoming",
-  },
-  {
-    id: "789012",
-    with: "Sarah Johnson",
-    avatar: "SJ",
-    project: "EcoPackage - Sustainable Packaging Solution",
-    date: "Tomorrow",
-    time: "11:00 AM",
-    status: "upcoming",
-  },
-]
+interface Investment {
+  _id: string;
+  project: {
+    _id: string;
+    title: string;
+    entrepreneur: {
+      name: string;
+      email: string;
+    };
+  };
+  amountInvested: number;
+  equityPercentage: number;
+  status: string;
+  returnToDate: number;
+  investedDate: string;
+}
 
 export default function InvestorDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [projects, setProjects] = useState<Project[]>([])
+  const [investments, setInvestments] = useState<Investment[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [userData, setUserData] = useState<any>(null)
+  const router = useRouter()
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('userData');
+    if (storedUserData) {
+      try {
+        const parsedUserData = JSON.parse(storedUserData);
+        setUserData(parsedUserData);
+        
+        // Redirect if not an investor
+        if (parsedUserData.role !== 'investor') {
+          toast({
+            title: "Access denied",
+            description: "Only investors can access this page",
+            variant: "destructive",
+          });
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        router.push('/login');
+      }
+    } else {
+      // Redirect to login if not logged in
+      toast({
+        title: "Login required",
+        description: "Please log in to access the investor dashboard",
+        variant: "destructive",
+      });
+      router.push('/login');
+    }
+  }, [router]);
+
+  // Fetch projects and investments when component mounts
+  useEffect(() => {
+    if (userData) {
+      fetchProjects();
+      fetchInvestments();
+    }
+  }, [userData]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/projects?approved=true');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Calculate match scores based on investor preferences
+        const projectsWithScores = data.projects.map((project: Project) => ({
+          ...project,
+          matchScore: calculateMatchScore(project)
+        }));
+        
+        // Sort projects by match score
+        const sortedProjects = projectsWithScores.sort((a: Project, b: Project) => 
+          (b.matchScore || 0) - (a.matchScore || 0)
+        );
+        
+        setProjects(sortedProjects);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch projects",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch projects",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchInvestments = async () => {
+    try {
+      const response = await fetch(`/api/investments?investor=${userData?._id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setInvestments(data.investments);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch investments",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching investments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch investments",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const calculateMatchScore = (project: Project): number => {
+    // This is a simple matching algorithm. You can make it more sophisticated
+    // by considering investor preferences, past investments, etc.
+    let score = 0;
+    
+    // Base score for approved projects
+    if (project.approved) {
+      score += 50;
+    }
+    
+    // Category matching (if investor has preferences)
+    if (userData?.preferences?.categories?.includes(project.category)) {
+      score += 20;
+    }
+    
+    // Funding goal matching (if investor has preferred investment range)
+    if (userData?.preferences?.investmentRange) {
+      const [min, max] = userData.preferences.investmentRange;
+      if (project.fundingGoal >= min && project.fundingGoal <= max) {
+        score += 15;
+      }
+    }
+    
+    // Recent projects get a small boost
+    const projectAge = new Date().getTime() - new Date(project.createdAt).getTime();
+    const daysOld = projectAge / (1000 * 60 * 60 * 24);
+    if (daysOld < 7) {
+      score += 10;
+    }
+    
+    // Normalize score to 0-100
+    return Math.min(100, score);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userData');
+    router.push('/login');
+  };
+
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || project.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  if (!userData) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -185,40 +276,25 @@ export default function InvestorDashboard() {
                     <Video className="h-5 w-5" />
                     <span>Video Calls</span>
                   </Link>
-                  <Link
-                    href="/dashboard/investor/settings"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span>Settings</span>
-                  </Link>
                 </nav>
               </SheetContent>
             </Sheet>
             <Link href="/" className="flex items-center gap-2">
               <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold hidden md:inline-block">NEW SHARKS</span>
+              <span className="text-xl font-bold">NEW SHARKS</span>
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                5
-              </span>
-              <span className="sr-only">Notifications</span>
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar>
-                    <AvatarFallback>AS</AvatarFallback>
+                    <AvatarFallback>{userData.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>Investor Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <User className="mr-2 h-4 w-4" />
@@ -229,7 +305,7 @@ export default function InvestorDashboard() {
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -242,7 +318,7 @@ export default function InvestorDashboard() {
         <aside className="hidden w-64 border-r md:block">
           <div className="flex h-full flex-col gap-2 p-4">
             <div className="py-2">
-              <h2 className="text-lg font-semibold">Alex Smith</h2>
+              <h2 className="text-lg font-semibold">{userData.name}</h2>
               <p className="text-sm text-gray-500">Investor</p>
             </div>
             <nav className="flex flex-col gap-1">
@@ -266,7 +342,6 @@ export default function InvestorDashboard() {
               >
                 <MessageSquare className="h-5 w-5" />
                 <span>Messages</span>
-                <Badge className="ml-auto">2</Badge>
               </Link>
               <Link
                 href="/dashboard/investor/video-calls"
@@ -274,18 +349,10 @@ export default function InvestorDashboard() {
               >
                 <Video className="h-5 w-5" />
                 <span>Video Calls</span>
-                <Badge className="ml-auto">2</Badge>
-              </Link>
-              <Link
-                href="/dashboard/investor/settings"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
-                <Settings className="h-5 w-5" />
-                <span>Settings</span>
               </Link>
             </nav>
             <div className="mt-auto">
-              <Button variant="outline" className="w-full justify-start gap-2">
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />
                 <span>Log out</span>
               </Button>
@@ -304,8 +371,10 @@ export default function InvestorDashboard() {
                   <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$35,000</div>
-                  <p className="text-xs text-gray-500">Across 2 projects</p>
+                  <div className="text-2xl font-bold">
+                    ${investments.reduce((sum, inv) => sum + (inv.amountInvested || 0), 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-gray-500">Across {investments.length} projects</p>
                 </CardContent>
               </Card>
               <Card>
@@ -313,8 +382,15 @@ export default function InvestorDashboard() {
                   <CardTitle className="text-sm font-medium">Current Returns</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$3,500</div>
-                  <p className="text-xs text-gray-500">10% average ROI</p>
+                  <div className="text-2xl font-bold">
+                    ${investments.reduce((sum, inv) => sum + (inv.returnToDate || 0), 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {investments.length > 0 
+                      ? `${((investments.reduce((sum, inv) => sum + (inv.returnToDate || 0), 0) / 
+                          Math.max(investments.reduce((sum, inv) => sum + (inv.amountInvested || 0), 0), 1)) * 100).toFixed(1)}% average ROI`
+                      : 'No investments yet'}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -322,7 +398,9 @@ export default function InvestorDashboard() {
                   <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$65,000</div>
+                  <div className="text-2xl font-bold">
+                    ${(userData.balance || 0).toLocaleString()}
+                  </div>
                   <p className="text-xs text-gray-500">Ready to invest</p>
                 </CardContent>
               </Card>
@@ -349,17 +427,17 @@ export default function InvestorDashboard() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Select defaultValue="all">
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                           <SelectTrigger className="w-full md:w-40">
                             <SelectValue placeholder="Category" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Categories</SelectItem>
-                            <SelectItem value="tech">Technology</SelectItem>
-                            <SelectItem value="health">Health</SelectItem>
-                            <SelectItem value="sustainability">Sustainability</SelectItem>
-                            <SelectItem value="education">Education</SelectItem>
-                            <SelectItem value="agriculture">Agriculture</SelectItem>
+                            <SelectItem value="Technology">Technology</SelectItem>
+                            <SelectItem value="Health">Health</SelectItem>
+                            <SelectItem value="Sustainability">Sustainability</SelectItem>
+                            <SelectItem value="Education">Education</SelectItem>
+                            <SelectItem value="Agriculture">Agriculture</SelectItem>
                           </SelectContent>
                         </Select>
                         <Button variant="outline" size="icon">
@@ -368,151 +446,137 @@ export default function InvestorDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-4">
-                    {mockProjects.map((project) => (
-                      <Card key={project.id}>
-                        <CardHeader>
-                          <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <CardTitle>{project.title}</CardTitle>
-                                <Badge variant="secondary" className="ml-2">
-                                  {project.matchScore}% Match
-                                </Badge>
-                              </div>
-                              <CardDescription>{project.description}</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-1 text-sm">
-                              <Avatar className="h-6 w-6">
-                                <AvatarFallback>{project.entrepreneur.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <span>{project.entrepreneur}</span>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div>
-                              <div className="flex justify-between text-sm mb-1">
-                                <span>Funding Progress</span>
-                                <span>
-                                  ${project.currentFunding.toLocaleString()} of ${project.fundingGoal.toLocaleString()}
-                                </span>
-                              </div>
-                              <Progress value={(project.currentFunding / project.fundingGoal) * 100} />
-                            </div>
-                            <div className="flex flex-wrap justify-between text-sm gap-y-2">
+                  {isLoading ? (
+                    <div className="text-center py-8">Loading projects...</div>
+                  ) : filteredProjects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No projects found matching your criteria</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {filteredProjects.map((project) => (
+                        <Card key={project._id}>
+                          <CardHeader>
+                            <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
                               <div>
-                                <span className="text-gray-500">Category:</span> {project.category}
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{project.title}</CardTitle>
+                                  {project.matchScore && (
+                                    <Badge variant="secondary" className="ml-2">
+                                      {project.matchScore}% Match
+                                    </Badge>
+                                  )}
+                                </div>
+                                <CardDescription>{project.description}</CardDescription>
                               </div>
-                              <div>
-                                <span className="text-gray-500">Investors:</span> {project.investors}
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Created:</span> {project.createdAt}
+                              <div className="flex items-center gap-1 text-sm">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback>{project.entrepreneur.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span>{project.entrepreneur.name}</span>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm">
-                            Contact
-                          </Button>
-                          <Button size="sm">View Details</Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div>
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span>Funding Progress</span>
+                                  <span>
+                                    ${(project.currentFunding || 0).toLocaleString()} of ${(project.fundingGoal || 0).toLocaleString()}
+                                  </span>
+                                </div>
+                                <Progress value={((project.currentFunding || 0) / (project.fundingGoal || 1)) * 100} />
+                              </div>
+                              <div className="flex flex-wrap justify-between text-sm gap-y-2">
+                                <div>
+                                  <span className="text-gray-500">Category:</span> {project.category || 'Uncategorized'}
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Investors:</span> {project.investors || 0}
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Created:</span> {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/dashboard/investor/messages?project=${project._id}`}>
+                                Contact
+                              </Link>
+                            </Button>
+                            <Button size="sm" asChild>
+                              <Link href={`/dashboard/investor/projects/${project._id}`}>
+                                View Details
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
                 <TabsContent value="investments" className="mt-4 space-y-4">
                   <h2 className="text-xl font-semibold">My Investments</h2>
-                  <div className="grid gap-4">
-                    {mockInvestments.map((investment) => (
-                      <Card key={investment.id}>
-                        <CardHeader>
-                          <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
-                            <div>
-                              <CardTitle>{investment.title}</CardTitle>
-                              <CardDescription>Invested on {investment.investedDate}</CardDescription>
+                  {investments.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">You haven't made any investments yet</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {investments.map((investment) => (
+                        <Card key={investment._id}>
+                          <CardHeader>
+                            <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
+                              <div>
+                                <CardTitle>{investment.project.title}</CardTitle>
+                                <CardDescription>Invested on {new Date(investment.investedDate).toLocaleDateString()}</CardDescription>
+                              </div>
+                              <Badge variant={investment.status === "profitable" ? "default" : "outline"}>
+                                {investment.status === "profitable" ? "Profitable" : "Active"}
+                              </Badge>
                             </div>
-                            <Badge variant={investment.status === "profitable" ? "default" : "outline"}>
-                              {investment.status === "profitable" ? "Profitable" : "Active"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Amount Invested</p>
-                              <p className="text-lg font-semibold">${investment.amountInvested.toLocaleString()}</p>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Amount Invested</p>
+                                <p className="text-lg font-semibold">${(investment.amountInvested || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Equity Percentage</p>
+                                <p className="text-lg font-semibold">{investment.equityPercentage || 0}%</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Return to Date</p>
+                                <p className="text-lg font-semibold">${(investment.returnToDate || 0).toLocaleString()}</p>
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Equity Percentage</p>
-                              <p className="text-lg font-semibold">{investment.equityPercentage}%</p>
+                            <div className="mt-4 flex items-center text-sm">
+                              <Avatar className="h-6 w-6 mr-2">
+                                <AvatarFallback>{investment.project.entrepreneur.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span>Entrepreneur: {investment.project.entrepreneur.name}</span>
                             </div>
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Return to Date</p>
-                              <p className="text-lg font-semibold">${investment.returnToDate.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="mt-4 flex items-center text-sm">
-                            <Avatar className="h-6 w-6 mr-2">
-                              <AvatarFallback>{investment.entrepreneur.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>Entrepreneur: {investment.entrepreneur}</span>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm">
-                            Contact Entrepreneur
-                          </Button>
-                          <Button size="sm">View Details</Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="calls" className="mt-4 space-y-4">
-                  <h2 className="text-xl font-semibold">Video Calls</h2>
-                  <div className="grid gap-4">
-                    {mockScheduledCalls.map((call) => (
-                      <Card key={call.id} className={call.status === "upcoming" ? "border-primary/50" : ""}>
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>{call.avatar}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <CardTitle className="text-base">Call with {call.with}</CardTitle>
-                              <CardDescription className="text-xs">
-                                {call.date} at {call.time}
-                              </CardDescription>
-                            </div>
-                            <Badge variant={call.status === "upcoming" ? "secondary" : "outline"} className="ml-auto">
-                              {call.status === "upcoming" ? "Upcoming" : "Completed"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm">Project: {call.project}</p>
-                        </CardContent>
-                        <CardFooter className="flex justify-end">
-                          {call.status === "upcoming" ? (
-                            <Link href={`/video-call/${call.id}`}>
-                              <Button size="sm" className="gap-2">
-                                <Video className="h-4 w-4" />
-                                Join Call
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Button variant="outline" size="sm">
-                              View Recording
+                          </CardContent>
+                          <CardFooter className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/dashboard/investor/messages?project=${investment.project._id}`}>
+                                Contact Entrepreneur
+                              </Link>
                             </Button>
-                          )}
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
+                            <Button size="sm" asChild>
+                              <Link href={`/dashboard/investor/projects/${investment.project._id}`}>
+                                View Details
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import Project from '@/lib/models/Project';
+import { Project } from '@/models/Project';
 import User from '@/lib/models/User';
 
 // POST - Create a new project
@@ -76,44 +76,30 @@ export async function POST(request: NextRequest) {
 // GET - Retrieve all projects or filter by entrepreneur
 export async function GET(request: NextRequest) {
   try {
-    // Connect to the database
-    await connectToDatabase();
-    
-    // Get query parameters
     const { searchParams } = new URL(request.url);
-    const entrepreneurId = searchParams.get('entrepreneur');
     const approved = searchParams.get('approved');
     
-    // Build query
-    let query: any = {};
+    await connectToDatabase();
     
-    if (entrepreneurId) {
-      query.entrepreneur = entrepreneurId;
+    // Build query based on parameters
+    const query: any = {};
+    if (approved === 'true') {
+      query.approved = true;
     }
     
-    if (approved !== null) {
-      query.approved = approved === 'true';
-    }
-    
-    // Fetch projects based on query
     const projects = await Project.find(query)
       .populate('entrepreneur', 'name email')
       .sort({ createdAt: -1 });
     
-    // Return success response
-    return NextResponse.json({ 
-      success: true, 
-      projects
-    }, { status: 200 });
-    
+    return NextResponse.json({
+      success: true,
+      projects: projects
+    });
   } catch (error) {
-    console.error('Get projects error:', error);
-    const err = error as any;
-    
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to retrieve projects',
-      details: err.message || 'Unknown error'
-    }, { status: 500 });
+    console.error('Error fetching projects:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch projects' },
+      { status: 500 }
+    );
   }
 } 

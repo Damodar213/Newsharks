@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -10,10 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/AuthContext"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -41,46 +42,13 @@ export default function LoginPage() {
     }
 
     try {
-      // Call authentication API
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-      console.log("Login response:", data);
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed")
-      }
-
-      // Store user data in localStorage for basic session management
-      localStorage.setItem('userData', JSON.stringify({
-        id: data.user._id,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        isLoggedIn: true
-      }));
-
+      await login(formData.email, formData.password)
       toast({
-        title: "Login successful",
-        description: `Welcome back, ${data.user.name}`,
+        title: "Success",
+        description: "Welcome back!",
       })
-
-      // Redirect based on user role
-      const redirectPath = data.user.role === "admin" 
-        ? "/dashboard/admin" 
-        : data.user.role === "investor" 
-          ? "/dashboard/investor" 
-          : "/dashboard/entrepreneur"
-      
-      router.push(redirectPath)
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Login error:", error)
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "Invalid credentials",

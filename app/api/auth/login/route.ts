@@ -5,57 +5,65 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
-    // Connect to the database
-    await connectToDatabase();
-    
-    // Get login credentials from request body
     const { email, password } = await request.json();
-    
-    // Validate required fields
+
     if (!email || !password) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Email and password are required' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
     }
-    
-    // Find user by email
+
+    console.log('Connecting to database...');
+    await connectToDatabase();
+    console.log('Connected to database');
+
+    console.log('Finding user...');
     const user = await User.findOne({ email });
-    
-    // Check if user exists
+    console.log('User found:', user ? 'Yes' : 'No');
+
     if (!user) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Invalid credentials' 
-      }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
     }
-    
-    // Compare password with hashed password in database
+
+    console.log('Comparing passwords...');
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+    console.log('Password valid:', isPasswordValid);
+
     if (!isPasswordValid) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Invalid credentials' 
-      }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
     }
-    
-    // Remove password from user object before sending response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-    
-    // Return user data
-    return NextResponse.json({ 
-      success: true, 
+
+    // Remove password from response
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture,
+      bio: user.bio,
+      location: user.location,
+      website: user.website,
+      socialLinks: user.socialLinks,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return NextResponse.json({
       message: 'Login successful',
-      user: userResponse
-    }, { status: 200 });
-    
+      user: userResponse,
+    });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'An error occurred during login' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'An error occurred during login' },
+      { status: 500 }
+    );
   }
 } 
