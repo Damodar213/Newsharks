@@ -15,6 +15,8 @@ import {
   User,
   Video,
   Wallet,
+  Plus,
+  ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,17 +29,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
-import { ContactDialog } from "@/components/ContactDialog"
-import { ProjectDetailsDialog } from "@/components/ProjectDetailsDialog"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Project {
   _id: string;
@@ -61,6 +68,8 @@ interface Investment {
   project: {
     _id: string;
     title: string;
+    description?: string;
+    category?: string;
     entrepreneur: {
       name: string;
       email: string;
@@ -73,25 +82,21 @@ interface Investment {
   investedDate: string;
 }
 
-export default function InvestorDashboard() {
+export default function InvestorInvestmentsPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userData, setUserData] = useState<any>(null)
+  const [investments, setInvestments] = useState<Investment[]>([])
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const [projects, setProjects] = useState<Project[]>([])
-  const [investments, setInvestments] = useState<Investment[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [userData, setUserData] = useState<any>(null)
-  const [contactDialogOpen, setContactDialogOpen] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
-  const [detailsProject, setDetailsProject] = useState<Project | null>(null)
   const [investDialogOpen, setInvestDialogOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [investmentAmount, setInvestmentAmount] = useState<number>(0)
-  const [equityPercentage, setEquityPercentage] = useState<number>(5)
+  const [equityPercentage, setEquityPercentage] = useState<number>(0)
   const [isInvesting, setIsInvesting] = useState(false)
   const router = useRouter()
 
-  // Load user data from localStorage
   useEffect(() => {
     const storedUserData = localStorage.getItem('userData');
     if (storedUserData) {
@@ -107,6 +112,9 @@ export default function InvestorDashboard() {
             variant: "destructive",
           });
           router.push('/dashboard');
+        } else {
+          fetchInvestments(parsedUserData);
+          fetchProjects();
         }
       } catch (error) {
         console.error("Error parsing user data:", error);
@@ -116,126 +124,131 @@ export default function InvestorDashboard() {
       // Redirect to login if not logged in
       toast({
         title: "Login required",
-        description: "Please log in to access the investor dashboard",
+        description: "Please log in to view investments",
         variant: "destructive",
       });
       router.push('/login');
     }
   }, [router]);
 
-  // Fetch projects and investments when component mounts
-  useEffect(() => {
-    if (userData) {
-      fetchProjects();
-      fetchInvestments();
-    }
-  }, [userData]);
-
-  const fetchProjects = async () => {
+  const fetchInvestments = async (user: any) => {
     try {
-      const response = await fetch('/api/projects?approved=true');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new TypeError("Received non-JSON response from server");
-      }
+      setIsLoading(true);
+      // In a real app, you'd make an API call here
+      // For now, we'll use mock data similar to the dashboard
       
-      const data = await response.json();
+      const mockInvestments: Investment[] = [
+        {
+          _id: "inv1",
+          project: {
+            _id: "proj1",
+            title: "SmartGarden - IoT Plant Care System",
+            entrepreneur: {
+              name: "John Doe",
+              email: "john@example.com"
+            }
+          },
+          amountInvested: 250000,
+          equityPercentage: 5,
+          status: "profitable",
+          returnToDate: 12500,
+          investedDate: new Date(2023, 3, 15).toISOString()
+        },
+        {
+          _id: "inv2",
+          project: {
+            _id: "proj2",
+            title: "EcoPackage - Sustainable Packaging Solution",
+            entrepreneur: {
+              name: "Emma Rodriguez",
+              email: "emma@example.com"
+            }
+          },
+          amountInvested: 150000,
+          equityPercentage: 3,
+          status: "active",
+          returnToDate: 5000,
+          investedDate: new Date(2023, 6, 22).toISOString()
+        },
+      ];
       
-      if (data.success) {
-        // Calculate match scores based on investor preferences
-        const projectsWithScores = data.projects.map((project: Project) => ({
-          ...project,
-          matchScore: calculateMatchScore(project)
-        }));
-        
-        // Sort projects by match score
-        const sortedProjects = projectsWithScores.sort((a: Project, b: Project) => 
-          (b.matchScore || 0) - (a.matchScore || 0)
-        );
-        
-        setProjects(sortedProjects);
-      } else {
-        throw new Error(data.error || 'Failed to fetch projects');
-      }
+      setInvestments(mockInvestments);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching investments:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch projects",
-        variant: "destructive",
+        description: "Failed to fetch investments",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchInvestments = async () => {
+  const fetchProjects = async () => {
     try {
-      // Make sure we're using the correct _id field from userData
-      const userId = userData?._id;
-      console.log("Fetching investments for user ID:", userId);
+      // In a real app, you'd make an API call here
+      // For now, we'll use mock data
+      const mockProjects: Project[] = [
+        {
+          _id: "proj3",
+          title: "HealthTrack - Wellness Monitoring App",
+          description: "Mobile application for tracking health metrics and providing personalized wellness recommendations.",
+          category: "Health",
+          fundingGoal: 300000,
+          currentFunding: 125000,
+          investors: 2,
+          entrepreneur: {
+            name: "Michael Chen",
+            email: "michael@example.com"
+          },
+          approved: true,
+          createdAt: new Date(2023, 7, 10).toISOString(),
+          matchScore: 85
+        },
+        {
+          _id: "proj4",
+          title: "EduTech - Online Learning Platform",
+          description: "Accessible education platform focusing on skill development for underserved communities.",
+          category: "Education",
+          fundingGoal: 250000,
+          currentFunding: 75000,
+          investors: 1,
+          entrepreneur: {
+            name: "Sarah Johnson",
+            email: "sarah@example.com"
+          },
+          approved: true,
+          createdAt: new Date(2023, 8, 5).toISOString(),
+          matchScore: 78
+        },
+        {
+          _id: "proj5",
+          title: "AgroTech - Smart Farming Solutions",
+          description: "IoT-based system for optimizing irrigation, fertilization, and pest control in agriculture.",
+          category: "Agriculture",
+          fundingGoal: 350000,
+          currentFunding: 100000,
+          investors: 2,
+          entrepreneur: {
+            name: "Raj Patel",
+            email: "raj@example.com"
+          },
+          approved: true,
+          createdAt: new Date(2023, 8, 15).toISOString(),
+          matchScore: 92
+        }
+      ];
       
-      const response = await fetch(`/api/investments?investor=${userId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new TypeError("Received non-JSON response from server");
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setInvestments(data.investments);
-      } else {
-        throw new Error(data.error || 'Failed to fetch investments');
-      }
+      setFeaturedProjects(mockProjects);
     } catch (error) {
-      console.error('Error fetching investments:', error);
+      console.error('Error fetching projects:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch investments",
-        variant: "destructive",
+        description: "Failed to fetch investment opportunities",
+        variant: "destructive"
       });
     }
-  };
-
-  const calculateMatchScore = (project: Project): number => {
-    // This is a simple matching algorithm. You can make it more sophisticated
-    // by considering investor preferences, past investments, etc.
-    let score = 0;
-    
-    // Base score for approved projects
-    if (project.approved) {
-      score += 50;
-    }
-    
-    // Category matching (if investor has preferences)
-    if (userData?.preferences?.categories?.includes(project.category)) {
-      score += 20;
-    }
-    
-    // Funding goal matching (if investor has preferred investment range)
-    if (userData?.preferences?.investmentRange) {
-      const [min, max] = userData.preferences.investmentRange;
-      if (project.fundingGoal >= min && project.fundingGoal <= max) {
-        score += 15;
-      }
-    }
-    
-    // Recent projects get a small boost
-    const projectAge = new Date().getTime() - new Date(project.createdAt).getTime();
-    const daysOld = projectAge / (1000 * 60 * 60 * 24);
-    if (daysOld < 7) {
-      score += 10;
-    }
-    
-    // Normalize score to 0-100
-    return Math.min(100, score);
   };
 
   const handleLogout = () => {
@@ -243,21 +256,14 @@ export default function InvestorDashboard() {
     router.push('/login');
   };
 
-  const handleContactClick = (project: Project) => {
-    setSelectedProject(project)
-    setContactDialogOpen(true)
-  }
-
-  const handleViewDetailsClick = (project: Project) => {
-    setDetailsProject(project)
-    setDetailsDialogOpen(true)
-  }
-
   const handleInvestClick = (project: Project) => {
-    setSelectedProject(project)
-    setEquityPercentage(5) // Default equity percentage
-    setInvestDialogOpen(true)
-  }
+    setSelectedProject(project);
+    // Calculate a suggested equity percentage based on the proposed investment
+    // This is a simplified calculation for demonstration
+    const suggestedEquity = 5; // 5% equity as default suggestion
+    setEquityPercentage(suggestedEquity);
+    setInvestDialogOpen(true);
+  };
 
   const handleInvestmentSubmit = async () => {
     if (!selectedProject) return;
@@ -275,9 +281,12 @@ export default function InvestorDashboard() {
         return;
       }
       
+      // In a real app, you'd make an API call to process the investment
+      // For now, we'll simulate a successful investment
+      
       // Create a new investment object
-      const newInvestment = {
-        _id: `inv${Date.now()}`,
+      const newInvestment: Investment = {
+        _id: `inv${Date.now()}`, // Generate a temporary ID
         project: {
           _id: selectedProject._id,
           title: selectedProject.title,
@@ -294,7 +303,7 @@ export default function InvestorDashboard() {
       setInvestments(prev => [...prev, newInvestment]);
       
       // Update the selected project's funding
-      const updatedProjects = projects.map(p => {
+      const updatedProjects = featuredProjects.map(p => {
         if (p._id === selectedProject._id) {
           return {
             ...p,
@@ -305,9 +314,9 @@ export default function InvestorDashboard() {
         return p;
       });
       
-      setProjects(updatedProjects);
+      setFeaturedProjects(updatedProjects);
       
-      // Update user's balance
+      // Update user's balance (in a real app, this would be done on the server)
       if (userData) {
         const updatedUserData = {
           ...userData,
@@ -342,14 +351,14 @@ export default function InvestorDashboard() {
     }
   };
 
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = featuredProjects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          project.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || project.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  if (!userData) {
+  if (isLoading || !userData) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>
   }
 
@@ -399,6 +408,14 @@ export default function InvestorDashboard() {
                     <Video className="h-5 w-5" />
                     <span>Video Calls</span>
                   </Link>
+                  <Link
+                    href="/dashboard/investor/settings"
+                    className="flex items-center gap-2 text-lg font-semibold"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Settings className="h-5 w-5" />
+                    <span>Settings</span>
+                  </Link>
                 </nav>
               </SheetContent>
             </Sheet>
@@ -447,14 +464,14 @@ export default function InvestorDashboard() {
             <nav className="flex flex-col gap-1">
               <Link
                 href="/dashboard/investor"
-                className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-primary"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
               >
                 <TrendingUp className="h-5 w-5" />
                 <span>Dashboard</span>
               </Link>
               <Link
                 href="/dashboard/investor/investments"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
+                className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-primary"
               >
                 <Wallet className="h-5 w-5" />
                 <span>My Investments</span>
@@ -492,9 +509,11 @@ export default function InvestorDashboard() {
         <main className="flex-1 overflow-auto">
           <div className="container py-6 px-4 md:px-6">
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-bold">Investor Dashboard</h1>
-              <p className="text-gray-500">Discover promising ideas and manage your investments</p>
+              <h1 className="text-2xl font-bold">My Investments</h1>
+              <p className="text-gray-500">Track your investments and discover new opportunities</p>
             </div>
+            
+            {/* Investment Overview */}
             <div className="grid gap-6 md:grid-cols-3 mt-6">
               <Card>
                 <CardHeader className="pb-2">
@@ -529,22 +548,98 @@ export default function InvestorDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ₹{(userData.balance || 0).toLocaleString()}
+                    ₹{(userData.balance || 1000000).toLocaleString()}
                   </div>
                   <p className="text-xs text-gray-500">Ready to invest</p>
                 </CardContent>
               </Card>
             </div>
+            
+            {/* Investment Tabs */}
             <div className="mt-6">
-              <Tabs defaultValue="discover">
+              <Tabs defaultValue="current">
                 <TabsList>
-                  <TabsTrigger value="discover">Discover Projects</TabsTrigger>
-                  <TabsTrigger value="investments">My Investments</TabsTrigger>
-                  <TabsTrigger value="calls">Video Calls</TabsTrigger>
+                  <TabsTrigger value="current">Current Investments</TabsTrigger>
+                  <TabsTrigger value="opportunities">Investment Opportunities</TabsTrigger>
                 </TabsList>
-                <TabsContent value="discover" className="mt-4 space-y-4">
+                
+                {/* Current Investments Tab */}
+                <TabsContent value="current" className="mt-4 space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <h2 className="text-xl font-semibold">Recommended Projects</h2>
+                    <h2 className="text-xl font-semibold">Current Investments</h2>
+                  </div>
+                  
+                  {investments.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">You haven't made any investments yet</p>
+                      <Button 
+                        className="mt-4"
+                        onClick={() => {
+                          // Use the setAttribute approach instead of click
+                          const opportunitiesTab = document.querySelector('[data-value="opportunities"]');
+                          if (opportunitiesTab instanceof HTMLElement) {
+                            opportunitiesTab.click();
+                          }
+                        }}
+                      >
+                        Find Investment Opportunities
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {investments.map((investment) => (
+                        <Card key={investment._id}>
+                          <CardHeader>
+                            <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
+                              <div>
+                                <CardTitle>{investment.project.title}</CardTitle>
+                                <CardDescription>Invested on {new Date(investment.investedDate).toLocaleDateString()}</CardDescription>
+                              </div>
+                              <Badge variant={investment.status === "profitable" ? "default" : "outline"}>
+                                {investment.status === "profitable" ? "Profitable" : "Active"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Amount Invested</p>
+                                <p className="text-lg font-semibold">₹{(investment.amountInvested || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Equity Percentage</p>
+                                <p className="text-lg font-semibold">{investment.equityPercentage || 0}%</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-500">Return to Date</p>
+                                <p className="text-lg font-semibold">₹{(investment.returnToDate || 0).toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="mt-4 flex items-center text-sm">
+                              <Avatar className="h-6 w-6 mr-2">
+                                <AvatarFallback>{investment.project.entrepreneur.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span>Entrepreneur: {investment.project.entrepreneur.name}</span>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm">
+                              Contact Entrepreneur
+                            </Button>
+                            <Button size="sm">
+                              View Details
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                
+                {/* Investment Opportunities Tab */}
+                <TabsContent value="opportunities" className="mt-4 space-y-4">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <h2 className="text-xl font-semibold">Investment Opportunities</h2>
                     <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                       <div className="relative w-full md:w-64">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -576,153 +671,71 @@ export default function InvestorDashboard() {
                       </div>
                     </div>
                   </div>
-                  {isLoading ? (
-                    <div className="text-center py-8">Loading projects...</div>
-                  ) : filteredProjects.length === 0 ? (
+                  
+                  {filteredProjects.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-gray-500">No projects found matching your criteria</p>
                     </div>
                   ) : (
-                  <div className="grid gap-4">
+                    <div className="grid gap-4">
                       {filteredProjects.map((project) => (
                         <Card key={project._id}>
-                        <CardHeader>
-                          <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <CardTitle>{project.title}</CardTitle>
+                          <CardHeader>
+                            <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle>{project.title}</CardTitle>
                                   {project.matchScore && (
-                                <Badge variant="secondary" className="ml-2">
-                                  {project.matchScore}% Match
-                                </Badge>
+                                    <Badge variant="secondary" className="ml-2">
+                                      {project.matchScore}% Match
+                                    </Badge>
                                   )}
+                                </div>
+                                <CardDescription>{project.description}</CardDescription>
                               </div>
-                              <CardDescription>{project.description}</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-1 text-sm">
-                              <Avatar className="h-6 w-6">
+                              <div className="flex items-center gap-1 text-sm">
+                                <Avatar className="h-6 w-6">
                                   <AvatarFallback>{project.entrepreneur.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
+                                </Avatar>
                                 <span>{project.entrepreneur.name}</span>
+                              </div>
                             </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div>
-                              <div className="flex justify-between text-sm mb-1">
-                                <span>Funding Progress</span>
-                                <span>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div>
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span>Funding Progress</span>
+                                  <span>
                                     ₹{(project.currentFunding || 0).toLocaleString()} of ₹{(project.fundingGoal || 0).toLocaleString()}
-                                </span>
-                              </div>
+                                  </span>
+                                </div>
                                 <Progress value={((project.currentFunding || 0) / (project.fundingGoal || 1)) * 100} />
-                            </div>
-                            <div className="flex flex-wrap justify-between text-sm gap-y-2">
-                              <div>
+                              </div>
+                              <div className="flex flex-wrap justify-between text-sm gap-y-2">
+                                <div>
                                   <span className="text-gray-500">Category:</span> {project.category || 'Uncategorized'}
-                              </div>
-                              <div>
+                                </div>
+                                <div>
                                   <span className="text-gray-500">Investors:</span> {project.investors || 0}
-                              </div>
-                              <div>
+                                </div>
+                                <div>
                                   <span className="text-gray-500">Created:</span> {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleContactClick(project)}>
-                              Contact
+                          </CardContent>
+                          <CardFooter className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm">
+                              View Details
                             </Button>
                             <Button size="sm" onClick={() => handleInvestClick(project)}>
-                              Invest
+                              <Plus className="mr-1 h-4 w-4" /> Invest
                             </Button>
-                            <Button size="sm" onClick={() => handleViewDetailsClick(project)}>
-                              View Details
-                            </Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="investments" className="mt-4 space-y-4">
-                  <h2 className="text-xl font-semibold">My Investments</h2>
-                  {investments.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">You haven't made any investments yet</p>
+                          </CardFooter>
+                        </Card>
+                      ))}
                     </div>
-                  ) : (
-                  <div className="grid gap-4">
-                      {investments.map((investment) => (
-                        <Card key={investment._id}>
-                        <CardHeader>
-                          <div className="flex flex-col md:flex-row justify-between md:items-start gap-2">
-                            <div>
-                                <CardTitle>{investment.project.title}</CardTitle>
-                                <CardDescription>Invested on {new Date(investment.investedDate).toLocaleDateString()}</CardDescription>
-                            </div>
-                            <Badge variant={investment.status === "profitable" ? "default" : "outline"}>
-                              {investment.status === "profitable" ? "Profitable" : "Active"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Amount Invested</p>
-                                <p className="text-lg font-semibold">₹{(investment.amountInvested || 0).toLocaleString()}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Equity Percentage</p>
-                                <p className="text-lg font-semibold">{investment.equityPercentage || 0}%</p>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-sm text-gray-500">Return to Date</p>
-                                <p className="text-lg font-semibold">₹{(investment.returnToDate || 0).toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="mt-4 flex items-center text-sm">
-                            <Avatar className="h-6 w-6 mr-2">
-                                <AvatarFallback>{investment.project.entrepreneur.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                              <span>Entrepreneur: {investment.project.entrepreneur.name}</span>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleContactClick({
-                              _id: investment.project._id,
-                              title: investment.project.title,
-                              entrepreneur: investment.project.entrepreneur,
-                              description: "",
-                              category: "",
-                              fundingGoal: 0,
-                              currentFunding: 0,
-                              investors: 0,
-                              approved: false,
-                              createdAt: "",
-                            })}>
-                              Contact Entrepreneur
-                            </Button>
-                            <Button size="sm" onClick={() => handleViewDetailsClick({
-                              _id: investment.project._id,
-                              title: investment.project.title,
-                              entrepreneur: investment.project.entrepreneur,
-                              description: "",
-                              category: "",
-                              fundingGoal: 0,
-                              currentFunding: 0,
-                              investors: 0,
-                              approved: false,
-                              createdAt: "",
-                            })}>
-                              View Details
-                            </Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
                   )}
                 </TabsContent>
               </Tabs>
@@ -730,28 +743,8 @@ export default function InvestorDashboard() {
           </div>
         </main>
       </div>
-      {selectedProject && (
-        <ContactDialog
-          isOpen={contactDialogOpen}
-          onClose={() => {
-            setContactDialogOpen(false)
-            setSelectedProject(null)
-          }}
-          entrepreneurName={selectedProject.entrepreneur.name}
-          projectId={selectedProject._id}
-          projectTitle={selectedProject.title}
-        />
-      )}
-      {detailsProject && (
-        <ProjectDetailsDialog
-          isOpen={detailsDialogOpen}
-          onClose={() => {
-            setDetailsDialogOpen(false)
-            setDetailsProject(null)
-          }}
-          project={detailsProject}
-        />
-      )}
+      
+      {/* Investment Dialog */}
       <Dialog open={investDialogOpen} onOpenChange={setInvestDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -797,7 +790,7 @@ export default function InvestorDashboard() {
               <div className="text-sm text-gray-500 border-t pt-2">
                 <p>Project Goal: ₹{(selectedProject.fundingGoal || 0).toLocaleString()}</p>
                 <p>Current Funding: ₹{(selectedProject.currentFunding || 0).toLocaleString()} ({((selectedProject.currentFunding || 0) / (selectedProject.fundingGoal || 1) * 100).toFixed(1)}%)</p>
-                <p className="font-medium mt-2">Your available balance: ₹{(userData?.balance || 0).toLocaleString()}</p>
+                <p className="font-medium mt-2">Your available balance: ₹{(userData.balance || 0).toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -812,13 +805,13 @@ export default function InvestorDashboard() {
             </Button>
             <Button 
               onClick={handleInvestmentSubmit}
-              disabled={isInvesting || investmentAmount <= 0 || investmentAmount > (userData?.balance || 0)}
+              disabled={isInvesting || investmentAmount <= 0 || investmentAmount > (userData.balance || 0)}
             >
-              {isInvesting ? "Processing..." : "Invest Now"}
+              {isInvesting ? "Processing..." : "Invest Now"} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
+  );
+} 

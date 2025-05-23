@@ -55,7 +55,7 @@ export function ProjectDetailsDialog({ isOpen, onClose, project }: ProjectDetail
           <div className="mt-2">
             <div className="flex justify-between text-sm mb-1">
               <span>Funding Progress</span>
-              <span>${(project.currentFunding || 0).toLocaleString()} of ${(project.fundingGoal || 0).toLocaleString()}</span>
+              <span>₹{(project.currentFunding || 0).toLocaleString()} of ₹{(project.fundingGoal || 0).toLocaleString()}</span>
             </div>
             <Progress value={((project.currentFunding || 0) / (project.fundingGoal || 1)) * 100} />
           </div>

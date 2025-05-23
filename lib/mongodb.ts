@@ -23,7 +23,6 @@ if (!cached) {
 export async function connectToDatabase() {
   try {
     if (cached.conn) {
-      console.log('Using cached MongoDB connection');
       return cached.conn;
     }
 
@@ -32,12 +31,8 @@ export async function connectToDatabase() {
         bufferCommands: false,
       };
 
-      console.log('Connecting to MongoDB...');
-      // TypeScript non-null assertion operator to tell TypeScript that MONGODB_URI is not null
-      cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-        console.log('MongoDB connected successfully');
-        return mongoose;
-      });
+      // TypeScript non-null assertion operator used because we've already checked MONGODB_URI is defined
+      cached.promise = mongoose.connect(MONGODB_URI!) as Promise<typeof mongoose>;
     }
 
     try {

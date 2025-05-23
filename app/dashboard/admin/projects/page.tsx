@@ -337,7 +337,7 @@ export default function AdminProjectsPage() {
                             <TableCell className="font-medium">{project.title}</TableCell>
                             <TableCell>{project.entrepreneur.name}</TableCell>
                             <TableCell>{project.category}</TableCell>
-                            <TableCell>${project.fundingGoal.toLocaleString()}</TableCell>
+                            <TableCell>₹{project.fundingGoal.toLocaleString()}</TableCell>
                             <TableCell>
                               <Badge variant={project.approved ? "outline" : "secondary"}>
                                 {project.approved ? "Approved" : "Pending"}

@@ -22,6 +22,8 @@ import { toast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { WebRTCService, ChatMessage } from "@/lib/webrtc"
+import { useCallback } from "react"
 
 // Mock call data
 const mockCallData = {
@@ -48,101 +50,137 @@ const mockCallData = {
 export default function VideoCallPage() {
   const router = useRouter()
   const params = useParams()
-  const callId = params.id
+  const callId = params.id as string
 
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOn, setIsVideoOn] = useState(true)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [isCallActive, setIsCallActive] = useState(false)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [participantCount, setParticipantCount] = useState(1) // Start with just self
   const [message, setMessage] = useState("")
-  const [messages, setMessages] = useState([
-    {
-      sender: "Alex Smith",
-      text: "Hello John, I'm excited to discuss your SmartGarden project.",
-      time: "2:31 PM",
-      isUser: false,
-    },
-    {
-      sender: "John Doe",
-      text: "Hi Alex, thanks for joining. I've prepared a presentation about the technology behind SmartGarden.",
-      time: "2:32 PM",
-      isUser: true,
-    },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [connectionEstablished, setConnectionEstablished] = useState(false)
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true)
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  const [userName, setUserName] = useState("")
+  const [userRole, setUserRole] = useState<"entrepreneur" | "investor">("entrepreneur")
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const fullScreenRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const webRTCRef = useRef<WebRTCService | null>(null)
 
-  // Simulate getting user media and starting a call
+  // Initialize WebRTC when component mounts
   useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.mediaDevices) {
-      // Get user media (camera and microphone)
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
-        .then((stream) => {
-          // Display local video
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream
+    const initializeWebRTC = async () => {
+      try {
+        if (!localVideoRef.current) return;
+        
+        // Get user info from localStorage first
+        const storedUserName = localStorage.getItem("userName") || "User"
+        const storedUserRole = localStorage.getItem("userRole") as "entrepreneur" | "investor" || "entrepreneur"
+        setUserName(storedUserName)
+        setUserRole(storedUserRole)
+        
+        // Create WebRTC service instance with the user name
+        webRTCRef.current = new WebRTCService(storedUserName);
+        
+        // Set up callbacks
+        webRTCRef.current.setOnPeerConnected((peerId, stream) => {
+          console.log('Peer connected with video:', peerId);
+          
+          // Connect remote video if available
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = stream;
           }
-
-          // In a real app, you would connect to a WebRTC service here
-          // For this demo, we'll simulate a remote video after a delay
-          setTimeout(() => {
-            setIsCallActive(true)
-            toast({
-              title: "Call Connected",
-              description: `You are now connected with ${mockCallData.investor.name}`,
-            })
-
-            // Simulate remote video (in a real app, this would come from the WebRTC connection)
-            if (remoteVideoRef.current) {
-              // For demo purposes, we're using the same stream
-              // In a real app, this would be the remote peer's stream
-              remoteVideoRef.current.srcObject = stream
-            }
-          }, 2000)
-        })
-        .catch((err) => {
-          console.error("Error accessing media devices:", err)
+          
+          // Update participant count
+          setParticipantCount(prev => prev + 1);
+          
+          // Show connected toast
           toast({
-            title: "Camera Access Error",
-            description: "Could not access your camera or microphone. Please check permissions.",
-            variant: "destructive",
-          })
-        })
-    }
+            title: "Participant Joined",
+            description: `A new participant has joined the call.`,
+          });
+          
+          // Set call to active
+          setIsCallActive(true);
+        });
+        
+        webRTCRef.current.setOnPeerDisconnected((peerId) => {
+          console.log('Peer disconnected:', peerId);
+          
+          // Update participant count
+          setParticipantCount(prev => Math.max(1, prev - 1));
+          
+          // Show disconnected toast
+          toast({
+            title: "Participant Left",
+            description: `A participant has left the call.`,
+          });
+        });
+        
+        webRTCRef.current.setOnChatMessageReceived((message) => {
+          console.log("Chat message received", message)
+          setMessages(prev => [...prev, message])
+        });
+        
+        // Initialize connection using room ID from URL
+        await webRTCRef.current.initialize(callId, localVideoRef.current);
+        
+        // If no one joins within 10 seconds, show "waiting" notification
+        setTimeout(() => {
+          if (participantCount === 1) {
+            toast({
+              title: "Waiting for others",
+              description: "Share the URL with others to join this call.",
+            });
+          }
+        }, 10000);
 
-    // Cleanup function
-    return () => {
-      // Stop all tracks when component unmounts
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
+        setConnectionEstablished(true)
+      } catch (err) {
+        console.error("Error initializing WebRTC:", err);
+        toast({
+          title: "Camera Access Error",
+          description: "Could not access your camera or microphone. Please check permissions.",
+          variant: "destructive",
+        });
       }
-    }
-  }, [])
+    };
 
-  const toggleMute = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      stream.getAudioTracks().forEach((track) => {
-        track.enabled = isMuted
-      })
-      setIsMuted(!isMuted)
-    }
-  }
+    initializeWebRTC();
 
-  const toggleVideo = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      stream.getVideoTracks().forEach((track) => {
-        track.enabled = !isVideoOn
-      })
-      setIsVideoOn(!isVideoOn)
+    // Clean up when component unmounts
+    return () => {
+      if (webRTCRef.current) {
+        webRTCRef.current.leaveRoom();
+      }
+    };
+  }, [callId]);
+
+  // Scroll to bottom of chat when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
-  }
+  }, [messages])
+
+  const toggleMute = useCallback(() => {
+    if (webRTCRef.current) {
+      webRTCRef.current.toggleAudio(!isMuted);
+      setIsMuted(!isMuted);
+    }
+  }, [isMuted]);
+
+  const toggleVideo = useCallback(() => {
+    if (webRTCRef.current) {
+      webRTCRef.current.toggleVideo(!isVideoOn);
+      setIsVideoOn(!isVideoOn);
+    }
+  }, [isVideoOn]);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement && fullScreenRef.current) {
@@ -158,97 +196,61 @@ export default function VideoCallPage() {
     }
   }
 
-  const toggleScreenSharing = () => {
-    if (!isScreenSharing) {
-      if (navigator.mediaDevices.getDisplayMedia) {
-        navigator.mediaDevices
-          .getDisplayMedia({ video: true })
-          .then((stream) => {
-            if (localVideoRef.current) {
-              // Save the original stream to restore later
-              const originalStream = localVideoRef.current.srcObject as MediaStream
-              // Set the screen sharing stream
-              localVideoRef.current.srcObject = stream
-
-              // Listen for the end of screen sharing
-              const track = stream.getVideoTracks()[0]
-              track.onended = () => {
-                if (localVideoRef.current) {
-                  localVideoRef.current.srcObject = originalStream
-                  setIsScreenSharing(false)
-                }
-              }
-
-              setIsScreenSharing(true)
-              toast({
-                title: "Screen Sharing Started",
-                description: "You are now sharing your screen",
-              })
-            }
-          })
-          .catch((err) => {
-            console.error("Error sharing screen:", err)
-            toast({
-              title: "Screen Sharing Error",
-              description: "Could not share your screen. Please try again.",
-              variant: "destructive",
-            })
-          })
-      } else {
+  const toggleScreenSharing = useCallback(async () => {
+    if (webRTCRef.current) {
+      try {
+        await webRTCRef.current.shareScreen(!isScreenSharing);
+        setIsScreenSharing(!isScreenSharing);
+        
+        if (!isScreenSharing) {
+          toast({
+            title: "Screen Sharing Started",
+            description: "You are now sharing your screen",
+          });
+        } else {
+          toast({
+            title: "Screen Sharing Stopped",
+            description: "You have stopped sharing your screen",
+          });
+        }
+      } catch (error) {
+        console.error('Error toggling screen share:', error);
         toast({
-          title: "Screen Sharing Not Supported",
-          description: "Your browser does not support screen sharing.",
+          title: "Screen Sharing Error",
+          description: error instanceof Error ? error.message : "Could not toggle screen sharing.",
           variant: "destructive",
-        })
-      }
-    } else {
-      // Stop screen sharing
-      if (localVideoRef.current && localVideoRef.current.srcObject) {
-        const stream = localVideoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
-
-        // Restart camera
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream
-          }
-        })
-
-        setIsScreenSharing(false)
-        toast({
-          title: "Screen Sharing Stopped",
-          description: "You have stopped sharing your screen",
-        })
+        });
       }
     }
-  }
+  }, [isScreenSharing]);
 
-  const endCall = () => {
-    // Stop all tracks
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach((track) => track.stop())
+  const endCall = useCallback(() => {
+    // Disconnect WebRTC
+    if (webRTCRef.current) {
+      webRTCRef.current.leaveRoom();
     }
 
     toast({
       title: "Call Ended",
       description: "The video call has ended",
-    })
+    });
 
     // Redirect back to dashboard
-    router.push("/dashboard/entrepreneur")
-  }
+    router.push("/dashboard/entrepreneur");
+  }, [router]);
 
   const sendMessage = () => {
-    if (message.trim()) {
-      const newMessage = {
-        sender: "John Doe",
-        text: message,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        isUser: true,
-      }
-      setMessages([...messages, newMessage])
+    if (message.trim() && webRTCRef.current) {
+      webRTCRef.current.sendChatMessage(message)
       setMessage("")
+    }
+  }
+
+  // Handle enter key in chat input
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
     }
   }
 
@@ -303,7 +305,7 @@ export default function VideoCallPage() {
                       </div>
                     </div>
                     <h2 className="text-xl font-semibold">Connecting...</h2>
-                    <p className="text-gray-300">Waiting for {mockCallData.investor.name} to join</p>
+                    <p className="text-gray-300">Waiting for others to join</p>
                   </div>
                 </div>
               )}
@@ -355,7 +357,7 @@ export default function VideoCallPage() {
               {/* Participants */}
               <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-gray-800 bg-opacity-80 px-3 py-1.5 text-white">
                 <Users className="h-4 w-4" />
-                <span className="text-sm">2 Participants</span>
+                <span className="text-sm">{participantCount} Participants</span>
               </div>
             </div>
           </div>
@@ -407,7 +409,7 @@ export default function VideoCallPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="font-medium">Funding Goal</p>
-                          <p className="text-gray-500">${mockCallData.fundingGoal.toLocaleString()}</p>
+                          <p className="text-gray-500">₹{mockCallData.fundingGoal.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="font-medium">Equity Offering</p>
@@ -460,7 +462,7 @@ export default function VideoCallPage() {
                       placeholder="Type a message..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                      onKeyDown={handleKeyDown}
                     />
                     <Button onClick={sendMessage}>Send</Button>
                   </div>

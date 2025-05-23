@@ -435,10 +435,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Total Funding</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${(mockStats.totalFunding / 1000000).toFixed(2)}M</div>
+                  <div className="text-2xl font-bold">₹{(mockStats.totalFunding / 1000000).toFixed(2)}M</div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">{mockStats.successRate}% success rate</span>
-                    <span className="text-gray-500">Avg: ${mockStats.averageInvestment}</span>
+                    <span className="text-gray-500">Avg: ₹{mockStats.averageInvestment}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -451,7 +451,7 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${mockStats.monthlyRevenue.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">₹{mockStats.monthlyRevenue.toLocaleString()}</div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">This month</span>
                     <span className="text-gray-500">{mockStats.platformFee}% platform fee</span>
@@ -533,7 +533,7 @@ export default function AdminDashboard() {
                               <TableCell className="font-medium">{project.title}</TableCell>
                               <TableCell>{project.entrepreneur}</TableCell>
                               <TableCell>{project.category}</TableCell>
-                              <TableCell>${project.fundingGoal.toLocaleString()}</TableCell>
+                              <TableCell>₹{project.fundingGoal.toLocaleString()}</TableCell>
                               <TableCell>{project.submittedDate}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
@@ -651,7 +651,7 @@ export default function AdminDashboard() {
                               <TableCell className="font-medium">{transaction.investor}</TableCell>
                               <TableCell>{transaction.entrepreneur}</TableCell>
                               <TableCell>{transaction.project}</TableCell>
-                              <TableCell>${transaction.amount.toLocaleString()}</TableCell>
+                              <TableCell>₹{transaction.amount.toLocaleString()}</TableCell>
                               <TableCell>{transaction.date}</TableCell>
                               <TableCell>
                                 <Badge variant={transaction.status === "completed" ? "outline" : "secondary"}>
@@ -659,7 +659,7 @@ export default function AdminDashboard() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                ${((transaction.amount * mockStats.platformFee) / 100).toLocaleString()}
+                                ₹{((transaction.amount * mockStats.platformFee) / 100).toLocaleString()}
                               </TableCell>
                             </TableRow>
                           ))}

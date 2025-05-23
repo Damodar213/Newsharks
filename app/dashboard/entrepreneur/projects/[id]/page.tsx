@@ -300,7 +300,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         <span className="font-medium">Category:</span> {project.category}
                       </li>
                       <li>
-                        <span className="font-medium">Funding Goal:</span> ${project.fundingGoal.toLocaleString()}
+                        <span className="font-medium">Funding Goal:</span> ₹{project.fundingGoal.toLocaleString()}
                       </li>
                       <li>
                         <span className="font-medium">Equity Offering:</span> {project.equityOffering}%
@@ -319,8 +319,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <div className="space-y-2">
                         <Progress value={(project.currentFunding / project.fundingGoal) * 100} />
                         <div className="flex justify-between text-sm">
-                          <span>${project.currentFunding.toLocaleString()} raised</span>
-                          <span>{Math.round((project.currentFunding / project.fundingGoal) * 100)}% of ${project.fundingGoal.toLocaleString()}</span>
+                          <span>₹{project.currentFunding.toLocaleString()} raised</span>
+                          <span>{Math.round((project.currentFunding / project.fundingGoal) * 100)}% of ₹{project.fundingGoal.toLocaleString()}</span>
                         </div>
                       </div>
                     ) : (

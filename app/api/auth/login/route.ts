@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -25,26 +24,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Connecting to database...');
     try {
       await connectToDatabase();
-      console.log('Connected to database');
     } catch (dbError) {
       console.error('Database connection error:', dbError);
       return NextResponse.json(
-        { success: false, error: 'Database connection error' },
+        { success: false, error: 'Database connection failed' },
         { status: 500 }
       );
     }
     
-    // Check what models are available in mongoose
-    console.log('Available models:', Object.keys(mongoose.models));
-    
-    console.log('Finding user...');
     let user;
     try {
-      user = await User.findOne({ email });
-      console.log('User found:', user ? 'Yes' : 'No');
+      user = await User.findOne({ email }).select('+password');
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
     } catch (findError) {
       console.error('Error finding user:', findError);
       return NextResponse.json(
@@ -53,33 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-    
-    console.log('User schema methods:', Object.keys(User.schema?.methods || {}));
-    console.log('User instance methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(user)));
-
-    console.log('Comparing passwords...');
     let isPasswordValid = false;
-    
     try {
-      // Try using the comparePassword method if it exists
-      if (typeof user.comparePassword === 'function') {
-        isPasswordValid = await user.comparePassword(password);
-        console.log('Password valid (using comparePassword):', isPasswordValid);
-      } 
-      // Fallback to direct bcrypt comparison if method isn't available
-      else {
-        console.log('comparePassword method not found, using direct bcrypt comparison');
-        isPasswordValid = await bcrypt.compare(password, user.password);
-        console.log('Password valid (using bcrypt directly):', isPasswordValid);
-      }
+      isPasswordValid = await bcrypt.compare(password, user.password);
     } catch (compareError) {
-      console.error('Error during password comparison:', compareError);
+      console.error('Error comparing passwords:', compareError);
       return NextResponse.json(
         { success: false, error: 'Authentication system error' },
         { status: 500 }
@@ -101,9 +77,6 @@ export async function POST(request: NextRequest) {
       role: user.role,
       profilePicture: user.profilePicture,
       bio: user.bio,
-      location: user.location,
-      website: user.website,
-      socialLinks: user.socialLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

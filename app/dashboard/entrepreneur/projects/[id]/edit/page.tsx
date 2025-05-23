@@ -430,7 +430,7 @@ export default function EditProjectPage({ params }: { params: { id: string } }) 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label htmlFor="fundingGoal" className="text-sm font-medium">
-                      Funding Goal ($) *
+                      Funding Goal (₹) *
                     </label>
                     <Input
                       id="fundingGoal"

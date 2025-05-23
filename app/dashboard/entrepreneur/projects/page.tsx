@@ -355,7 +355,7 @@ export default function EntrepreneurProjectsPage() {
                             <span className="text-gray-500">Category:</span> {project.category}
                           </div>
                           <div>
-                            <span className="text-gray-500">Funding Goal:</span> ${project.fundingGoal.toLocaleString()}
+                            <span className="text-gray-500">Funding Goal:</span> ₹{project.fundingGoal.toLocaleString()}
                           </div>
                           <div>
                             <span className="text-gray-500">Equity Offering:</span> {project.equityOffering}%

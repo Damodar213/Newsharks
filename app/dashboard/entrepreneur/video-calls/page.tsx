@@ -29,6 +29,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { VideoCallButton } from "@/components/VideoCallButton"
 
 // Mock scheduled video calls
 const mockScheduledCalls = [
@@ -238,6 +239,14 @@ export default function EntrepreneurVideoCallsPage() {
                 <TabsTrigger value="past">Past Calls</TabsTrigger>
               </TabsList>
               <TabsContent value="upcoming" className="mt-4 space-y-4">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">Upcoming Video Calls</h2>
+                  <VideoCallButton 
+                    variant="outline" 
+                    userRole="entrepreneur" 
+                    userName={user?.name || "Entrepreneur"} 
+                  />
+                </div>
                 <div className="grid gap-4">
                   {mockScheduledCalls.map((call) => (
                     <Card key={call.id} className="border-primary/50">
@@ -264,12 +273,18 @@ export default function EntrepreneurVideoCallsPage() {
                         <Button variant="outline" size="sm">
                           Reschedule
                         </Button>
-                        <Link href={`/video-call/${call.id}`}>
-                          <Button size="sm" className="gap-2">
-                            <Video className="h-4 w-4" />
-                            Join Call
+                        {call.status === "upcoming" ? (
+                          <VideoCallButton 
+                            callId={call.id} 
+                            size="sm" 
+                            userRole="entrepreneur"
+                            userName={user?.name || "Entrepreneur"}
+                          />
+                        ) : (
+                          <Button variant="outline" size="sm">
+                            View Recording
                           </Button>
-                        </Link>
+                        )}
                       </CardFooter>
                     </Card>
                   ))}

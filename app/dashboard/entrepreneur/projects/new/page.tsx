@@ -201,7 +201,7 @@ export default function NewProjectPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fundingGoal">Funding Goal (USD)</Label>
+                  <Label htmlFor="fundingGoal">Funding Goal (INR)</Label>
                   <Input
                     id="fundingGoal"
                     name="fundingGoal"

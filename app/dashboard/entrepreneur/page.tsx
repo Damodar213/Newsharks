@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { VideoCallButton } from "@/components/VideoCallButton"
 
 // Mock data for entrepreneur's projects
 const mockProjects = [
@@ -291,7 +292,7 @@ export default function EntrepreneurDashboard() {
                   <CardTitle className="text-sm font-medium">Total Funding</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$63,000</div>
+                  <div className="text-2xl font-bold">₹63,000</div>
                   <p className="text-xs text-gray-500">Across all projects</p>
                 </CardContent>
               </Card>
@@ -351,7 +352,7 @@ export default function EntrepreneurDashboard() {
                               <div className="flex justify-between text-sm mb-1">
                                 <span>Funding Progress</span>
                                 <span>
-                                  ${project.currentFunding.toLocaleString()} of ${project.fundingGoal.toLocaleString()}
+                                  ₹{project.currentFunding.toLocaleString()} of ₹{project.fundingGoal.toLocaleString()}
                                 </span>
                               </div>
                               <Progress value={(project.currentFunding / project.fundingGoal) * 100} />
@@ -436,12 +437,10 @@ export default function EntrepreneurDashboard() {
                         </CardContent>
                         <CardFooter className="flex justify-end">
                           {call.status === "upcoming" ? (
-                            <Link href={`/video-call/${call.id}`}>
-                              <Button size="sm" className="gap-2">
-                                <Video className="h-4 w-4" />
-                                Join Call
-                              </Button>
-                            </Link>
+                            <VideoCallButton 
+                              callId={call.id} 
+                              size="sm" 
+                            />
                           ) : (
                             <Button variant="outline" size="sm">
                               View Recording
