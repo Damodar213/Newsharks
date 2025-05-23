@@ -31,6 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      // First try to get user from localStorage
+      if (typeof window !== 'undefined') {
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+          const userData = JSON.parse(storedUserData);
+          if (userData._id && userData.email) {
+            setUser(userData);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback to API check
       const response = await fetch("/api/auth/me");
       const data = await response.json();
       if (data.success) {

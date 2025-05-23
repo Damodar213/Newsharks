@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LightbulbIcon, LogOut, Menu, MessageSquare, Plus, Settings, TrendingUp, User, Video } from "lucide-react"
+import { Bell, LightbulbIcon, LogOut, Menu, MessageSquare, Plus, Settings, TrendingUp, User, Video, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -39,6 +39,7 @@ interface Project {
 // Define interface for user data
 interface UserData {
   id: string;
+  _id?: string;
   name: string;
   email: string;
   role: string;
@@ -51,6 +52,7 @@ export default function EntrepreneurProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userData, setUserData] = useState<UserData | null>(null)
+  const [showOnlyReal, setShowOnlyReal] = useState(false)
 
   // Load user data from localStorage
   useEffect(() => {
@@ -94,7 +96,9 @@ export default function EntrepreneurProjectsPage() {
   const fetchProjects = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/projects?entrepreneur=${userData?.id}`);
+      // Fix the entrepreneur ID issue by using both possible ID fields
+      const entrepreneurId = userData?.id || userData?._id;
+      const response = await fetch(`/api/projects?entrepreneur=${entrepreneurId}`);
       const data = await response.json();
       
       if (!response.ok) {
@@ -120,6 +124,11 @@ export default function EntrepreneurProjectsPage() {
     localStorage.removeItem('userData');
     router.push("/login");
   }
+
+  // Filter projects based on the showOnlyReal state
+  const filteredProjects = showOnlyReal 
+    ? projects.filter(project => project.approved)
+    : projects;
 
   // Show loading state
   if (isLoading || !userData) {
@@ -293,18 +302,32 @@ export default function EntrepreneurProjectsPage() {
                 <h1 className="text-2xl font-bold">My Projects</h1>
                 <p className="text-gray-500">Manage your business ideas and funding</p>
               </div>
-              <Link href="/dashboard/entrepreneur/projects/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowOnlyReal(!showOnlyReal)}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  {showOnlyReal ? "Show All" : "Show Only Approved"}
                 </Button>
-              </Link>
+                <Link href="/dashboard/entrepreneur/projects/new">
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Project
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {projects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <Card className="p-8 text-center">
-                <h3 className="text-lg font-medium mb-2">No projects yet</h3>
-                <p className="text-gray-500 mb-6">Create your first project to start attracting investors</p>
+                <h3 className="text-lg font-medium mb-2">
+                  {showOnlyReal 
+                    ? "No approved projects yet" 
+                    : "No projects yet"}
+                </h3>
+                <p className="text-gray-500 mb-6">
+                  {showOnlyReal 
+                    ? "Your projects are still pending approval" 
+                    : "Create your first project to start attracting investors"}
+                </p>
                 <Link href="/dashboard/entrepreneur/projects/new">
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -314,7 +337,7 @@ export default function EntrepreneurProjectsPage() {
               </Card>
             ) : (
               <div className="grid gap-6">
-                {projects.map((project) => (
+                {filteredProjects.map((project) => (
                   <Card key={project._id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">

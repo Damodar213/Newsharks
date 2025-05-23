@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get('approved');
+    const entrepreneur = searchParams.get('entrepreneur');
     
     await connectToDatabase();
     
@@ -86,6 +87,11 @@ export async function GET(request: NextRequest) {
     if (approved === 'true') {
       query.approved = true;
     }
+    if (entrepreneur) {
+      query.entrepreneur = entrepreneur;
+    }
+    
+    console.log("Projects query:", query);
     
     const projects = await Project.find(query)
       .populate('entrepreneur', 'name email')

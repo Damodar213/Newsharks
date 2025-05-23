@@ -23,6 +23,16 @@ const conversationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Update the updatedAt field when document is modified
+conversationSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
 });
 
 export const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', conversationSchema); 

@@ -82,6 +82,7 @@ export default function InvestorMessages() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -91,16 +92,23 @@ export default function InvestorMessages() {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
+    if (!loading) {
+      if (!user && !userData) {
+        router.push("/login");
+      } else if (userData && !user) {
+        // If we have userData but no user in context, use the userData
+        if (userData.role !== 'investor') {
+          router.push("/dashboard");
+        }
+      }
     }
-  }, [user, loading, router]);
+  }, [user, userData, loading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (userData?._id || user?._id) {
       fetchConversations();
     }
-  }, [user]);
+  }, [userData, user]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -193,13 +201,34 @@ export default function InvestorMessages() {
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch(`/api/messages/conversations?userId=${user?._id}`);
+      setLoadingConversations(true);
+      const userId = user?._id || userData?._id;
+      if (!userId) {
+        console.error("No user ID available for fetching conversations");
+        return;
+      }
+
+      const response = await fetch(`/api/messages/conversations?userId=${userId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new TypeError("Received non-JSON response from server");
+      }
+      
       const data = await response.json();
       if (data.success) {
         setConversations(data.conversations);
+      } else {
+        console.error("Failed to fetch conversations:", data.error);
       }
     } catch (error) {
       console.error("Error fetching conversations:", error);
+    } finally {
+      setLoadingConversations(false);
     }
   };
 
@@ -207,9 +236,21 @@ export default function InvestorMessages() {
     try {
       setLoadingMessages(true);
       const response = await fetch(`/api/messages?conversationId=${conversationId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new TypeError("Received non-JSON response from server");
+      }
+      
       const data = await response.json();
       if (data.success) {
         setMessages(data.messages);
+      } else {
+        console.error("Failed to fetch messages:", data.error);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -257,8 +298,13 @@ export default function InvestorMessages() {
     conv.project.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading || isCreatingConversation) {
-    return <div>Loading...</div>;
+  if (loading || isCreatingConversation || (loadingConversations && conversations.length === 0)) {
+    return <div className="flex justify-center items-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Loading...</p>
+      </div>
+    </div>;
   }
 
   return (

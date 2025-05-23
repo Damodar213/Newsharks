@@ -12,7 +12,7 @@ export async function GET(
     // Connect to the database
     await connectToDatabase();
     
-    const projectId = params.id;
+    const { id: projectId } = params;
     
     // Validate project ID format
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
@@ -61,7 +61,7 @@ export async function PUT(
     // Connect to the database
     await connectToDatabase();
     
-    const projectId = params.id;
+    const { id: projectId } = params;
     
     // Validate project ID format
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
@@ -127,7 +127,7 @@ export async function DELETE(
     // Connect to the database
     await connectToDatabase();
     
-    const projectId = params.id;
+    const { id: projectId } = params;
     
     // Validate project ID format
     if (!mongoose.Types.ObjectId.isValid(projectId)) {

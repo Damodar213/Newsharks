@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 // MongoDB connection string
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://damodark818:246813579daM%40@newsharks.xif4ym2.mongodb.net/?retryWrites=true&w=majority&appName=newsharks';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
@@ -22,32 +22,33 @@ if (!cached) {
 
 export async function connectToDatabase() {
   try {
-  if (cached.conn) {
+    if (cached.conn) {
       console.log('Using cached MongoDB connection');
-    return cached.conn;
-  }
+      return cached.conn;
+    }
 
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
+    if (!cached.promise) {
+      const opts = {
+        bufferCommands: false,
+      };
 
       console.log('Connecting to MongoDB...');
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      // TypeScript non-null assertion operator to tell TypeScript that MONGODB_URI is not null
+      cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
         console.log('MongoDB connected successfully');
         return mongoose;
-    });
-  }
+      });
+    }
 
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
+    try {
+      cached.conn = await cached.promise;
+    } catch (e) {
+      cached.promise = null;
       console.error('MongoDB connection error:', e);
-    throw e;
-  }
+      throw e;
+    }
 
-  return cached.conn;
+    return cached.conn;
   } catch (error) {
     console.error('MongoDB connection error:', error);
     throw error;
