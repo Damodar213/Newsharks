@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Bell, LogOut, Menu, MessageSquare, Settings, TrendingUp, User, Video, Wallet, Save, Lock, CreditCard, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,6 +35,15 @@ export default function InvestorSettingsPage() {
   const [investmentFocus, setInvestmentFocus] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const searchParams = useSearchParams();
+  const tabParam = searchParams?.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || "profile");
+
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     const storedUserData = localStorage.getItem('userData');
@@ -252,7 +261,7 @@ export default function InvestorSettingsPage() {
               <p className="text-gray-500">Manage your investor account preferences and settings</p>
             </div>
 
-            <Tabs defaultValue="profile">
+            <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="profile">
               <TabsList className="mb-4">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="account">Account</TabsTrigger>

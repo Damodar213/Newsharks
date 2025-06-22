@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import Project from '@/lib/models/Project';
+import { ObjectId } from 'mongodb';
 
 export async function PUT(
   request: NextRequest,
@@ -8,23 +8,45 @@ export async function PUT(
 ) {
   try {
     // Connect to the database
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const projectId = params.id;
+    console.log('Attempting to approve project with ID:', projectId);
+    
+    // Validate project ID format
+    let projectObjectId;
+    try {
+      projectObjectId = new ObjectId(projectId);
+    } catch (error) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid project ID format' 
+      }, { status: 400 });
+    }
     
     // Find and update the project
-    const updatedProject = await Project.findByIdAndUpdate(
-      projectId,
-      { approved: true },
-      { new: true }
+    const result = await db.collection('projects').updateOne(
+      { _id: projectObjectId },
+      { 
+        $set: { 
+          approved: true,
+          updatedAt: new Date().toISOString()
+        } 
+      }
     );
     
-    if (!updatedProject) {
+    if (result.matchedCount === 0) {
+      console.log('Project not found for ID:', projectId);
       return NextResponse.json({ 
         success: false, 
         error: 'Project not found' 
       }, { status: 404 });
     }
+    
+    // Get the updated project
+    const updatedProject = await db.collection('projects').findOne({ _id: projectObjectId });
+    
+    console.log('Project approved successfully:', projectId);
     
     return NextResponse.json({ 
       success: true, 

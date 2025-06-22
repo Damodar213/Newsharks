@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Activity,
@@ -32,34 +32,38 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
-// Mock data for pending projects
-const mockPendingProjects = [
-  {
-    id: 1,
-    title: "FoodShare - Restaurant Surplus Distribution",
-    entrepreneur: "Maria Garcia",
-    category: "Food & Sustainability",
-    fundingGoal: 35000,
-    submittedDate: "2023-11-18",
-  },
-  {
-    id: 2,
-    title: "RenewEnergy - Portable Solar Chargers",
-    entrepreneur: "James Wilson",
-    category: "Clean Energy",
-    fundingGoal: 45000,
-    submittedDate: "2023-11-17",
-  },
-  {
-    id: 3,
-    title: "KidCode - Programming for Children",
-    entrepreneur: "Priya Patel",
-    category: "Education",
-    fundingGoal: 20000,
-    submittedDate: "2023-11-15",
-  },
-]
+// Define types for the project and user data
+interface EntrepreneurInfo {
+  name: string;
+  email: string;
+  _id?: string;
+}
+
+interface Project {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  fundingGoal: number;
+  currentFunding?: number;
+  equityOffering: number;
+  approved: boolean;
+  rejected?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  entrepreneur: EntrepreneurInfo;
+}
+
+interface UserData {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+  role?: string;
+  userType?: string;
+}
 
 // Mock data for users
 const mockUsers = [
@@ -204,34 +208,230 @@ const mockVideoCalls = [
 
 // Monthly funding data for chart
 const monthlyFundingData = [
-  { month: "Jan", amount: 45000 },
-  { month: "Feb", amount: 62000 },
-  { month: "Mar", amount: 78000 },
-  { month: "Apr", amount: 95000 },
-  { month: "May", amount: 110000 },
-  { month: "Jun", amount: 135000 },
-  { month: "Jul", amount: 162000 },
-  { month: "Aug", amount: 178000 },
-  { month: "Sep", amount: 195000 },
-  { month: "Oct", amount: 210000 },
+  { month: "Jan", amount: 120000 },
+  { month: "Feb", amount: 95000 },
+  { month: "Mar", amount: 135000 },
+  { month: "Apr", amount: 105000 },
+  { month: "May", amount: 80000 },
+  { month: "Jun", amount: 95000 },
+  { month: "Jul", amount: 150000 },
+  { month: "Aug", amount: 170000 },
+  { month: "Sep", amount: 190000 },
+  { month: "Oct", amount: 215000 },
   { month: "Nov", amount: 230000 },
+  { month: "Dec", amount: 150000 },
 ]
 
 export default function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+  const [pendingProjects, setPendingProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [isClient, setIsClient] = useState(false)
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalInvestments: 0,
+    totalFunding: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+    averageInvestment: 0,
+    successRate: 0,
+    userGrowth: 0,
+    fundingGrowth: 0,
+    videoCalls: 0,
+    pendingApprovals: 0,
+    monthlyRevenue: 0,
+    platformFee: 5,
+  })
 
-  const handleApproveProject = (id: number) => {
-    toast({
-      title: "Project Approved",
-      description: `Project ID ${id} has been approved and is now live.`,
-    })
+  // Mock data for these sections until we implement them
+  const [users] = useState(mockUsers)
+  const [transactions] = useState(mockTransactions)
+  const [videoCalls] = useState(mockVideoCalls)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return;
+
+    // Check for user authentication and admin role
+    try {
+      const storedUserData = localStorage.getItem('userData');
+      console.log("Admin dashboard - Raw userData from localStorage:", storedUserData);
+      
+      if (storedUserData) {
+        let parsedUserData;
+        try {
+          parsedUserData = JSON.parse(storedUserData);
+          console.log("Admin dashboard - Parsed userData:", parsedUserData);
+          setUserData(parsedUserData);
+          
+          // Fix: Check for both role and userType for compatibility
+          const isAdmin = parsedUserData.role === 'admin' || parsedUserData.userType === 'admin';
+          console.log("Is admin check result:", isAdmin, "Role:", parsedUserData.role, "UserType:", parsedUserData.userType);
+          
+          if (!isAdmin) {
+            console.log("Access denied - User is not admin");
+            toast({
+              title: "Access denied",
+              description: "Only administrators can access this page",
+              variant: "destructive",
+            });
+            router.push('/dashboard');
+          } else {
+            console.log("Admin access granted, fetching projects");
+            // Fetch pending projects and stats
+            fetchPendingProjects();
+          }
+        } catch (parseError) {
+          console.error("Error parsing userData JSON:", parseError);
+          toast({
+            title: "Session error",
+            description: "Your session data is corrupted. Please log in again.",
+            variant: "destructive",
+          });
+          router.push('/login');
+        }
+      } else {
+        console.log("No userData found in localStorage");
+        toast({
+          title: "Login required",
+          description: "Please log in to access the admin panel",
+          variant: "destructive",
+        });
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error("Error checking admin authentication:", error);
+      router.push('/login');
+    }
+  }, [router, isClient]);
+
+  const fetchPendingProjects = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch projects that are not approved
+      const response = await fetch('/api/projects', {
+        headers: {
+          'pragma': 'no-cache',
+          'cache-control': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filter projects that are not approved
+        const unapprovedProjects = data.projects.filter((project: Project) => project.approved === false);
+        setPendingProjects(unapprovedProjects);
+        
+        // Update stats based on real data
+        setStats(prevStats => ({
+          ...prevStats,
+          totalProjects: data.projects.length,
+          activeProjects: data.projects.filter((p: Project) => p.approved === true).length,
+          pendingApprovals: unapprovedProjects.length
+        }));
+
+        console.log("Pending projects loaded:", unapprovedProjects.length);
+      } else {
+        console.error("API returned failure:", data.error);
+        toast({
+          title: "Error",
+          description: data.error || "Failed to fetch projects",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching pending projects:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch projects",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveProject = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/approve`, {
+        method: 'PUT',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Project Approved",
+          description: "The project has been approved and is now live.",
+        });
+        // Refresh the list of pending projects
+        fetchPendingProjects();
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to approve project",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error approving project:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to approve project",
+        variant: "destructive",
+      });
+    }
   }
 
-  const handleRejectProject = (id: number) => {
-    toast({
-      title: "Project Rejected",
-      description: `Project ID ${id} has been rejected.`,
-    })
+  const handleRejectProject = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/reject`, {
+        method: 'PUT',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Project Rejected",
+          description: "The project has been rejected.",
+        });
+        // Refresh the list of pending projects
+        fetchPendingProjects();
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to reject project",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error rejecting project:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reject project",
+        variant: "destructive",
+      });
+    }
   }
 
   const handleSuspendUser = (id: number) => {
@@ -360,7 +560,7 @@ export default function AdminDashboard() {
               >
                 <TrendingUp className="h-5 w-5" />
                 <span>Project Management</span>
-                <Badge className="ml-auto">{mockPendingProjects.length}</Badge>
+                <Badge className="ml-auto">{stats.pendingApprovals}</Badge>
               </Link>
               <Link
                 href="/dashboard/admin/video-calls"
@@ -472,7 +672,7 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockStats.pendingApprovals}</div>
+                  <div className="text-2xl font-bold">{stats.pendingApprovals}</div>
                   <div className="text-xs text-gray-500">Projects awaiting review</div>
                 </CardContent>
               </Card>
@@ -516,51 +716,61 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-semibold">Pending Project Approvals</h2>
                   <Card>
                     <CardContent className="p-0">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Project</TableHead>
-                            <TableHead>Entrepreneur</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Funding Goal</TableHead>
-                            <TableHead>Submitted</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mockPendingProjects.map((project) => (
-                            <TableRow key={project.id}>
-                              <TableCell className="font-medium">{project.title}</TableCell>
-                              <TableCell>{project.entrepreneur}</TableCell>
-                              <TableCell>{project.category}</TableCell>
-                              <TableCell>₹{project.fundingGoal.toLocaleString()}</TableCell>
-                              <TableCell>{project.submittedDate}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 gap-1"
-                                    onClick={() => handleApproveProject(project.id)}
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span>Approve</span>
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 gap-1 text-destructive"
-                                    onClick={() => handleRejectProject(project.id)}
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                    <span>Reject</span>
-                                  </Button>
-                                </div>
-                              </TableCell>
+                      {isLoading ? (
+                        <div className="flex justify-center items-center p-8">
+                          <span>Loading pending projects...</span>
+                        </div>
+                      ) : pendingProjects.length === 0 ? (
+                        <div className="flex justify-center items-center p-8">
+                          <span>No pending project approvals at this time.</span>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Entrepreneur</TableHead>
+                              <TableHead>Category</TableHead>
+                              <TableHead>Funding Goal</TableHead>
+                              <TableHead>Submitted</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingProjects.map((project) => (
+                              <TableRow key={project._id}>
+                                <TableCell className="font-medium">{project.title}</TableCell>
+                                <TableCell>{project.entrepreneur.name}</TableCell>
+                                <TableCell>{project.category}</TableCell>
+                                <TableCell>₹{project.fundingGoal.toLocaleString()}</TableCell>
+                                <TableCell>{new Date(project.createdAt).toLocaleDateString()}</TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1"
+                                      onClick={() => handleApproveProject(project._id)}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                      <span>Approve</span>
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 text-destructive"
+                                      onClick={() => handleRejectProject(project._id)}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      <span>Reject</span>
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

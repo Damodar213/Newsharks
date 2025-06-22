@@ -1,51 +1,44 @@
-import mongoose from 'mongoose';
+import { MongoClient } from 'mongodb';
 
-// MongoDB connection string
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
+if (!process.env.MONGODB_URI) {
+  throw new Error('Please add your Mongo URI to .env.local');
 }
 
+const uri = process.env.MONGODB_URI as string;
+const options = {};
+
+// Define the global type augmentation
 declare global {
-  var mongoose: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
-  };
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-let cached = global.mongoose;
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+if (process.env.NODE_ENV === 'development') {
+  // In development mode, use a global variable so that the value
+  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    global._mongoClientPromise = client.connect();
+  }
+  clientPromise = global._mongoClientPromise!;
+} else {
+  // In production mode, it's best to not use a global variable.
+  client = new MongoClient(uri, options);
+  clientPromise = client.connect();
 }
 
 export async function connectToDatabase() {
   try {
-    if (cached.conn) {
-      return cached.conn;
-    }
-
-    if (!cached.promise) {
-      const opts = {
-        bufferCommands: false,
-      };
-
-      // TypeScript non-null assertion operator used because we've already checked MONGODB_URI is defined
-      cached.promise = mongoose.connect(MONGODB_URI!) as Promise<typeof mongoose>;
-    }
-
-    try {
-      cached.conn = await cached.promise;
-    } catch (e) {
-      cached.promise = null;
-      console.error('MongoDB connection error:', e);
-      throw e;
-    }
-
-    return cached.conn;
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB as string || 'new-sharks');
+    return { client, db };
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw error;
+    console.error('Failed to connect to database:', error);
+    throw new Error('Failed to connect to database');
   }
-} 
+}
+
+export default clientPromise; 

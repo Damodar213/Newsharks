@@ -54,17 +54,27 @@ export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userData, setUserData] = useState<any>(null)
+  const [isClient, setIsClient] = useState(false)
 
-  // Load user data from localStorage
   useEffect(() => {
-    const storedUserData = localStorage.getItem('userData');
-    if (storedUserData) {
-      try {
-        const parsedUserData = JSON.parse(storedUserData);
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return;
+    
+    let parsedUserData;
+    try {
+      const storedUserData = localStorage.getItem('userData');
+      console.log("Admin Projects Page - Raw userData:", storedUserData);
+      
+      if (storedUserData) {
+        parsedUserData = JSON.parse(storedUserData);
+        console.log("Admin Projects Page - Parsed userData:", parsedUserData);
         setUserData(parsedUserData);
         
-        // Redirect if not an admin
         if (parsedUserData.role !== 'admin') {
+          console.log("Access denied - User role is not admin:", parsedUserData.role);
           toast({
             title: "Access denied",
             description: "Only administrators can access this page",
@@ -72,39 +82,58 @@ export default function AdminProjectsPage() {
           });
           router.push('/dashboard');
         }
-      } catch (error) {
-        console.error("Error parsing user data:", error);
+      } else {
+        console.log("No userData found in localStorage");
+        toast({
+          title: "Login required",
+          description: "Please log in to access the admin panel",
+          variant: "destructive",
+        });
         router.push('/login');
       }
-    } else {
-      // Redirect to login if not logged in
-      toast({
-        title: "Login required",
-        description: "Please log in to access the admin panel",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error("Error parsing user data:", error);
       router.push('/login');
     }
-  }, [router]);
+  }, [router, isClient]);
 
-  // Fetch projects when component mounts
   useEffect(() => {
     if (userData) {
-      fetchProjects();
+      try {
+        console.log("Fetching projects with userData:", userData);
+        fetchProjects();
+      } catch (error) {
+        console.error("Error in project fetch useEffect:", error);
+      }
     }
   }, [userData]);
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('/api/projects');
+      console.log("Making API request to /api/projects");
+      const response = await fetch('/api/projects', {
+        headers: {
+          'pragma': 'no-cache',
+          'cache-control': 'no-cache'
+        }
+      });
+      console.log("API response status:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Projects data:", data);
       
       if (data.success) {
-        setProjects(data.projects);
+        setProjects(data.projects || []);
+        console.log("Projects loaded:", data.projects?.length || 0);
       } else {
+        console.error("API returned failure:", data.error);
         toast({
           title: "Error",
-          description: "Failed to fetch projects",
+          description: data.error || "Failed to fetch projects",
           variant: "destructive",
         });
       }
@@ -112,7 +141,7 @@ export default function AdminProjectsPage() {
       console.error('Error fetching projects:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch projects",
+        description: error instanceof Error ? error.message : "Failed to fetch projects",
         variant: "destructive",
       });
     } finally {
@@ -122,21 +151,29 @@ export default function AdminProjectsPage() {
 
   const handleApproveProject = async (projectId: string) => {
     try {
+      console.log("Approving project with ID:", projectId);
       const response = await fetch(`/api/projects/${projectId}/approve`, {
         method: 'PUT',
       });
+      
+      if (!response.ok) {
+        console.error('Approval API error status:', response.status);
+        throw new Error(`API returned ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Approval response:", data);
       
       if (data.success) {
         toast({
           title: "Success",
           description: "Project approved successfully",
         });
-        fetchProjects(); // Refresh the projects list
+        fetchProjects();
       } else {
         toast({
           title: "Error",
-          description: "Failed to approve project",
+          description: data.error || "Failed to approve project",
           variant: "destructive",
         });
       }
@@ -144,7 +181,7 @@ export default function AdminProjectsPage() {
       console.error('Error approving project:', error);
       toast({
         title: "Error",
-        description: "Failed to approve project",
+        description: error instanceof Error ? error.message : "Failed to approve project",
         variant: "destructive",
       });
     }
@@ -152,21 +189,29 @@ export default function AdminProjectsPage() {
 
   const handleRejectProject = async (projectId: string) => {
     try {
+      console.log("Rejecting project with ID:", projectId);
       const response = await fetch(`/api/projects/${projectId}/reject`, {
         method: 'PUT',
       });
+      
+      if (!response.ok) {
+        console.error('Rejection API error status:', response.status);
+        throw new Error(`API returned ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Rejection response:", data);
       
       if (data.success) {
         toast({
           title: "Success",
           description: "Project rejected successfully",
         });
-        fetchProjects(); // Refresh the projects list
+        fetchProjects();
       } else {
         toast({
           title: "Error",
-          description: "Failed to reject project",
+          description: data.error || "Failed to reject project",
           variant: "destructive",
         });
       }
@@ -174,7 +219,7 @@ export default function AdminProjectsPage() {
       console.error('Error rejecting project:', error);
       toast({
         title: "Error",
-        description: "Failed to reject project",
+        description: error instanceof Error ? error.message : "Failed to reject project",
         variant: "destructive",
       });
     }

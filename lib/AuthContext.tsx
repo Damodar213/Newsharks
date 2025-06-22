@@ -8,6 +8,17 @@ interface User {
   name: string;
   email: string;
   role: string;
+  balance?: number;
+}
+
+// Add an interface for the user data stored in localStorage
+interface UserData {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isLoggedIn: boolean;
+  balance?: number;
 }
 
 interface AuthContextType {
@@ -30,8 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
+    setLoading(true);
     try {
-      // First try to get user from localStorage
+      // Only access localStorage on the client side
       if (typeof window !== 'undefined') {
         const storedUserData = localStorage.getItem('userData');
         if (storedUserData) {
@@ -79,14 +91,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log("Login response data:", data);
 
-      // Store user data in localStorage
-      localStorage.setItem('userData', JSON.stringify({
+      // Add balance for investor users
+      const userData: UserData = {
         _id: data.user._id,
         name: data.user.name,
         email: data.user.email,
         role: data.user.role,
-        isLoggedIn: true
-      }));
+        isLoggedIn: true,
+      };
+      
+      // Add default balance for investors
+      if (data.user.role === 'investor') {
+        userData.balance = 10000; // Default balance of ₹10,000
+      }
+
+      // Store user data in localStorage
+      localStorage.setItem('userData', JSON.stringify(userData));
 
       setUser(data.user);
       

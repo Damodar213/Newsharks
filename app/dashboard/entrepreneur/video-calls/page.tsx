@@ -314,10 +314,10 @@ export default function EntrepreneurVideoCallsPage() {
                         <p className="text-sm">Project: {call.project}</p>
                       </CardContent>
                       <CardFooter className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm">
+                        {/* <Button variant="outline" size="sm">
                           View Notes
                         </Button>
-                        <Button size="sm">View Recording</Button>
+                        <Button size="sm">View Recording</Button> */}
                       </CardFooter>
                     </Card>
                   ))}

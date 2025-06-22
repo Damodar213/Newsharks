@@ -12,42 +12,88 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 
+// Hard-coded admin credentials for demo purposes
+const ADMIN_EMAIL = "admin@example.com"
+const ADMIN_PASSWORD = "admin123"
+
 export default function AdminLoginPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    securityCode: "",
   })
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
 
-    // Basic validation
-    if (!formData.email || !formData.password || !formData.securityCode) {
+    try {
+      // Basic validation
+      if (!formData.email || !formData.password) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Simple admin authentication
+      if (formData.email === ADMIN_EMAIL && formData.password === ADMIN_PASSWORD) {
+        // Create admin user data directly
+        const adminUserData = {
+          _id: "admin123",
+          id: "admin123",
+          name: "Admin User",
+          email: ADMIN_EMAIL,
+          role: "admin",
+          userType: "admin",
+          isLoggedIn: true
+        };
+        
+        try {
+          // Store in localStorage
+          localStorage.setItem('userData', JSON.stringify(adminUserData));
+          console.log("Admin login successful. Data stored:", adminUserData);
+          
+          toast({
+            title: "Admin Login successful",
+            description: "Welcome to the NEW SHARKS admin panel",
+          });
+          
+          // Use window.location for more reliable navigation
+          window.location.href = "/dashboard/admin";
+        } catch (storageError) {
+          console.error("Error storing admin data:", storageError);
+          toast({
+            title: "Login Error",
+            description: "Failed to store login information. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Invalid admin credentials",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
-      })
-      return
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    // Mock admin login logic - in a real app, you would authenticate with your backend
-    console.log("Admin login attempted with:", formData)
-
-    toast({
-      title: "Admin Login successful",
-      description: "Welcome to the NEW SHARKS admin panel",
-    })
-
-    // Redirect to admin dashboard
-    router.push("/dashboard/admin")
   }
 
   return (
@@ -84,6 +130,7 @@ export default function AdminLoginPage() {
                   onChange={handleChange}
                   required
                 />
+                <p className="text-xs text-gray-500">Use admin@example.com</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -95,26 +142,12 @@ export default function AdminLoginPage() {
                   onChange={handleChange}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="securityCode">Security Code</Label>
-                <Input
-                  id="securityCode"
-                  name="securityCode"
-                  type="password"
-                  placeholder="Enter your admin security code"
-                  value={formData.securityCode}
-                  onChange={handleChange}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  The security code is required for admin access and provides an additional layer of security.
-                </p>
+                <p className="text-xs text-gray-500">Use admin123</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full">
-                Log in to Admin Panel
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Logging in..." : "Log in to Admin Panel"}
               </Button>
               <div className="text-center text-sm">
                 <Link href="/login" className="text-primary hover:underline">

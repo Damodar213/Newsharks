@@ -324,9 +324,7 @@ export default function InvestorVideoCalls() {
                               />
                             </>
                           ) : (
-                            <Button variant="outline" size="sm">
-                              View Recording
-                            </Button>
+                            <span className="text-sm text-gray-500">No recording available</span>
                           )}
                         </CardFooter>
                       </Card>
@@ -365,9 +363,7 @@ export default function InvestorVideoCalls() {
                         </CardContent>
                         <CardFooter className="flex justify-end">
                           {call.recording ? (
-                            <Button variant="outline" size="sm">
-                              View Recording
-                            </Button>
+                            <span className="text-sm text-gray-500">No recording available</span>
                           ) : (
                             <span className="text-sm text-gray-500">No recording available</span>
                           )}

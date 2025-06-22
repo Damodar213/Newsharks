@@ -36,6 +36,7 @@ export default function NewProjectPage() {
     if (storedUserData) {
       try {
         const parsedUserData = JSON.parse(storedUserData);
+        console.log("Loaded userData from localStorage:", parsedUserData);
         setUserData(parsedUserData);
         
         // Redirect if not an entrepreneur
@@ -79,8 +80,12 @@ export default function NewProjectPage() {
     e.preventDefault()
     setIsLoading(true)
 
+    // Debug output to inspect userData
+    console.log("userData:", userData);
+    console.log("formData:", formData);
+
     // Basic validation
-    if (!formData.title || !formData.description || !formData.category) {
+    if (!formData.title || !formData.description || !formData.category || !formData.equityOffering) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -90,6 +95,21 @@ export default function NewProjectPage() {
       return
     }
 
+    // Ensure we have a valid user ID
+    if (!userData || (!userData._id && !userData.id)) {
+      toast({
+        title: "Authentication Error",
+        description: "Your session appears to be invalid. Please log in again.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      router.push('/login')
+      return
+    }
+
+    const userId = userData._id || userData.id;
+    console.log("Using user ID:", userId);
+
     try {
       // Send project data to API
       const response = await fetch("/api/projects", {
@@ -98,8 +118,14 @@ export default function NewProjectPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
-          userId: userData?.id, // Add user ID from localStorage
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          fundingGoal: formData.fundingGoal,
+          equityOffering: formData.equityOffering,
+          timeline: formData.timeline,
+          businessPlan: formData.businessPlan,
+          userId: userId,
         }),
       })
 
@@ -107,7 +133,7 @@ export default function NewProjectPage() {
       console.log("Project creation response:", data)
 
       if (!response.ok) {
-        throw new Error(data.error || data.details || "Failed to create project")
+        throw new Error(data.error || data.details || data.missingFields?.join(', ') || "Failed to create project")
       }
 
       toast({

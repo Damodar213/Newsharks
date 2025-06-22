@@ -1,40 +1,88 @@
-import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Investment } from '@/models/Investment';
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const investorId = searchParams.get('investor');
+    const searchParams = request.nextUrl.searchParams;
+    const investor = searchParams.get("investor");
     
-    if (!investorId) {
+    if (!investor) {
       return NextResponse.json(
-        { success: false, error: 'Investor ID is required' },
+        { success: false, error: "Investor ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const { db } = await connectToDatabase();
+    
+    const investments = await db.collection("investments")
+      .find({ investor: investor })
+      .toArray();
+      
+    return NextResponse.json({
+      success: true,
+      investments,
+    });
+  } catch (error) {
+    console.error("Error fetching investments:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const investmentData = await request.json();
+    
+    // Validate required fields
+    if (!investmentData.project || !investmentData.investor || !investmentData.amountInvested) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
         { status: 400 }
       );
     }
     
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
-    const investments = await Investment.find({ investor: investorId })
-      .populate({
-        path: 'project',
-        select: 'title entrepreneur',
-        populate: {
-          path: 'entrepreneur',
-          select: 'name email'
-        }
-      })
-      .sort({ investedDate: -1 });
+    // Add timestamps
+    const investment = {
+      ...investmentData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    const result = await db.collection("investments").insertOne(investment);
+    
+    if (!result.insertedId) {
+      return NextResponse.json(
+        { success: false, error: "Failed to create investment" },
+        { status: 500 }
+      );
+    }
+    
+    // Get the created investment
+    const createdInvestment = await db.collection("investments").findOne({
+      _id: result.insertedId,
+    });
     
     return NextResponse.json({
       success: true,
-      investments: investments
+      message: "Investment created successfully",
+      investment: createdInvestment,
     });
   } catch (error) {
-    console.error('Error fetching investments:', error);
+    console.error("Error creating investment:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch investments' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "An unexpected error occurred",
+      },
       { status: 500 }
     );
   }

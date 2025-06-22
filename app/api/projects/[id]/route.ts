@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import Project from '@/lib/models/Project';
-import mongoose from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 // GET - Get a single project by ID
 export async function GET(
@@ -10,12 +9,15 @@ export async function GET(
 ) {
   try {
     // Connect to the database
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const { id: projectId } = params;
     
     // Validate project ID format
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    let projectObjectId;
+    try {
+      projectObjectId = new ObjectId(projectId);
+    } catch (error) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid project ID format' 
@@ -23,8 +25,7 @@ export async function GET(
     }
     
     // Find the project
-    const project = await Project.findById(projectId)
-      .populate('entrepreneur', 'name email');
+    const project = await db.collection('projects').findOne({ _id: projectObjectId });
     
     // Check if project exists
     if (!project) {
@@ -32,6 +33,18 @@ export async function GET(
         success: false, 
         error: 'Project not found' 
       }, { status: 404 });
+    }
+    
+    // Get entrepreneur info if available
+    if (project.entrepreneur) {
+      const entrepreneur = await db.collection('users').findOne(
+        { _id: project.entrepreneur },
+        { projection: { name: 1, email: 1 } }
+      );
+      
+      if (entrepreneur) {
+        project.entrepreneur = entrepreneur;
+      }
     }
     
     // Return success response
@@ -59,12 +72,15 @@ export async function PUT(
 ) {
   try {
     // Connect to the database
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const { id: projectId } = params;
     
     // Validate project ID format
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    let projectObjectId;
+    try {
+      projectObjectId = new ObjectId(projectId);
+    } catch (error) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid project ID format' 
@@ -75,29 +91,36 @@ export async function PUT(
     const body = await request.json();
     const { title, description, category, fundingGoal, equityOffering, timeline, businessPlan, approved } = body;
     
+    // Prepare update data
+    const updateData: any = {
+      updatedAt: new Date().toISOString()
+    };
+    
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (fundingGoal !== undefined) updateData.fundingGoal = Number(fundingGoal);
+    if (equityOffering !== undefined) updateData.equityOffering = Number(equityOffering);
+    if (timeline !== undefined) updateData.timeline = timeline;
+    if (businessPlan !== undefined) updateData.businessPlan = businessPlan;
+    if (approved !== undefined) updateData.approved = approved;
+    
     // Find and update the project
-    const updatedProject = await Project.findByIdAndUpdate(
-      projectId,
-      {
-        ...(title && { title }),
-        ...(description && { description }),
-        ...(category && { category }),
-        ...(fundingGoal && { fundingGoal: Number(fundingGoal) }),
-        ...(equityOffering && { equityOffering: Number(equityOffering) }),
-        ...(timeline !== undefined && { timeline }),
-        ...(businessPlan !== undefined && { businessPlan }),
-        ...(approved !== undefined && { approved }),
-      },
-      { new: true, runValidators: true }
+    const result = await db.collection('projects').updateOne(
+      { _id: projectObjectId },
+      { $set: updateData }
     );
     
     // Check if project exists
-    if (!updatedProject) {
+    if (result.matchedCount === 0) {
       return NextResponse.json({ 
         success: false, 
         error: 'Project not found' 
       }, { status: 404 });
     }
+    
+    // Get the updated project
+    const updatedProject = await db.collection('projects').findOne({ _id: projectObjectId });
     
     // Return success response
     return NextResponse.json({ 
@@ -125,12 +148,15 @@ export async function DELETE(
 ) {
   try {
     // Connect to the database
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const { id: projectId } = params;
     
     // Validate project ID format
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    let projectObjectId;
+    try {
+      projectObjectId = new ObjectId(projectId);
+    } catch (error) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid project ID format' 
@@ -138,10 +164,10 @@ export async function DELETE(
     }
     
     // Find and delete the project
-    const deletedProject = await Project.findByIdAndDelete(projectId);
+    const result = await db.collection('projects').deleteOne({ _id: projectObjectId });
     
     // Check if project exists
-    if (!deletedProject) {
+    if (result.deletedCount === 0) {
       return NextResponse.json({ 
         success: false, 
         error: 'Project not found' 

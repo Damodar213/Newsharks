@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/lib/models/User';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -24,19 +23,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      await connectToDatabase();
-    } catch (dbError) {
-      console.error('Database connection error:', dbError);
-      return NextResponse.json(
-        { success: false, error: 'Database connection failed' },
-        { status: 500 }
-      );
-    }
+    // Connect to database using our MongoDB client
+    const { db } = await connectToDatabase();
     
     let user;
     try {
-      user = await User.findOne({ email }).select('+password');
+      // Find user in users collection
+      user = await db.collection('users').findOne({ email: email.toLowerCase() });
+      
       if (!user) {
         return NextResponse.json(
           { success: false, error: 'Invalid email or password' },

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import User, { UserRole } from '@/lib/models/User';
+import bcrypt from 'bcryptjs';
+
+// Define user roles enum
+enum UserRole {
+  ADMIN = 'admin',
+  INVESTOR = 'investor',
+  ENTREPRENEUR = 'entrepreneur'
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,13 +56,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Connecting to database...');
-    await connectToDatabase();
-    console.log('Connected to database');
+    // Connect to database using our MongoDB client
+    const { db } = await connectToDatabase();
 
     // Check if user already exists
-    console.log('Checking if user exists...');
-    const existingUser = await User.findOne({ email });
+    const existingUser = await db.collection('users').findOne({ email: email.toLowerCase() });
     
     if (existingUser) {
       return NextResponse.json(
@@ -64,14 +69,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create new user
-    console.log('Creating new user...');
-    const user = await User.create({
+    const newUser = {
       name,
-      email,
-      password,
+      email: email.toLowerCase(),
+      password: hashedPassword,
       role: role || UserRole.ENTREPRENEUR,
-    });
+      profilePicture: '',
+      bio: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const result = await db.collection('users').insertOne(newUser);
+    
+    if (!result.insertedId) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to create user' },
+        { status: 500 }
+      );
+    }
+    
+    // Get the created user with ID
+    const user = await db.collection('users').findOne({ _id: result.insertedId });
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to retrieve created user' },
+        { status: 500 }
+      );
+    }
 
     // Remove password from response
     const userResponse = {
@@ -81,9 +112,6 @@ export async function POST(request: NextRequest) {
       role: user.role,
       profilePicture: user.profilePicture,
       bio: user.bio,
-      location: user.location,
-      website: user.website,
-      socialLinks: user.socialLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

@@ -97,6 +97,13 @@ export default function InvestorDashboard() {
     if (storedUserData) {
       try {
         const parsedUserData = JSON.parse(storedUserData);
+        
+        // Add default balance of 10000 if not set
+        if (parsedUserData.balance === undefined) {
+          parsedUserData.balance = 10000;
+          localStorage.setItem('userData', JSON.stringify(parsedUserData));
+        }
+        
         setUserData(parsedUserData);
         
         // Redirect if not an investor
@@ -277,7 +284,62 @@ export default function InvestorDashboard() {
       
       // Create a new investment object
       const newInvestment = {
-        _id: `inv${Date.now()}`,
+        project: selectedProject._id,
+        investor: userData._id,
+        amountInvested: investmentAmount,
+        equityPercentage: equityPercentage,
+        status: "active",
+        returnToDate: 0,
+        investedDate: new Date().toISOString()
+      };
+      
+      // Save the investment to the database
+      console.log("Sending investment data to API:", newInvestment);
+      const response = await fetch('/api/investments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newInvestment),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Investment API response:", data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to save investment');
+      }
+      
+      // Update project funding in the database
+      const updateProjectResponse = await fetch(`/api/projects/${selectedProject._id}/fund`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: investmentAmount,
+          investorId: userData._id,
+        }),
+      });
+      
+      if (!updateProjectResponse.ok) {
+        throw new Error(`Project update API returned status ${updateProjectResponse.status}`);
+      }
+      
+      const updateProjectData = await updateProjectResponse.json();
+      console.log("Project funding update response:", updateProjectData);
+      
+      if (!updateProjectData.success) {
+        throw new Error(updateProjectData.error || 'Failed to update project funding');
+      }
+      
+      // Add the new investment to the local state
+      setInvestments(prev => [...prev, {
+        _id: data.investment._id || `inv${Date.now()}`,
         project: {
           _id: selectedProject._id,
           title: selectedProject.title,
@@ -288,12 +350,9 @@ export default function InvestorDashboard() {
         status: "active",
         returnToDate: 0,
         investedDate: new Date().toISOString()
-      };
+      }]);
       
-      // Add the new investment to the list
-      setInvestments(prev => [...prev, newInvestment]);
-      
-      // Update the selected project's funding
+      // Update the selected project's funding in local state
       const updatedProjects = projects.map(p => {
         if (p._id === selectedProject._id) {
           return {
@@ -333,7 +392,7 @@ export default function InvestorDashboard() {
       console.error('Error processing investment:', error);
       toast({
         title: "Investment failed",
-        description: "There was an error processing your investment. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error processing your investment. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -391,14 +450,14 @@ export default function InvestorDashboard() {
                     <MessageSquare className="h-5 w-5" />
                     <span>Messages</span>
                   </Link>
-                  <Link
+                  {/* <Link
                     href="/dashboard/investor/video-calls"
                     className="flex items-center gap-2 text-lg font-semibold"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <Video className="h-5 w-5" />
                     <span>Video Calls</span>
-                  </Link>
+                  </Link> */}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -419,11 +478,11 @@ export default function InvestorDashboard() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Investor Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/investor/settings?tab=profile')}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/investor/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
@@ -466,13 +525,13 @@ export default function InvestorDashboard() {
                 <MessageSquare className="h-5 w-5" />
                 <span>Messages</span>
               </Link>
-              <Link
+              {/* <Link
                 href="/dashboard/investor/video-calls"
                 className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
               >
                 <Video className="h-5 w-5" />
                 <span>Video Calls</span>
-              </Link>
+              </Link> */}
               <Link
                 href="/dashboard/investor/settings"
                 className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
@@ -540,7 +599,7 @@ export default function InvestorDashboard() {
                 <TabsList>
                   <TabsTrigger value="discover">Discover Projects</TabsTrigger>
                   <TabsTrigger value="investments">My Investments</TabsTrigger>
-                  <TabsTrigger value="calls">Video Calls</TabsTrigger>
+                  {/* <TabsTrigger value="calls">Video Calls</TabsTrigger> */}
                 </TabsList>
                 <TabsContent value="discover" className="mt-4 space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -601,9 +660,9 @@ export default function InvestorDashboard() {
                             </div>
                             <div className="flex items-center gap-1 text-sm">
                               <Avatar className="h-6 w-6">
-                                  <AvatarFallback>{project.entrepreneur.name.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback>{project.entrepreneur?.name?.charAt(0) || 'U'}</AvatarFallback>
                               </Avatar>
-                                <span>{project.entrepreneur.name}</span>
+                                <span>{project.entrepreneur?.name || 'Unknown'}</span>
                             </div>
                           </div>
                         </CardHeader>
@@ -685,9 +744,9 @@ export default function InvestorDashboard() {
                           </div>
                           <div className="mt-4 flex items-center text-sm">
                             <Avatar className="h-6 w-6 mr-2">
-                                <AvatarFallback>{investment.project.entrepreneur.name.charAt(0)}</AvatarFallback>
+                                <AvatarFallback>{investment.project?.entrepreneur?.name?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                              <span>Entrepreneur: {investment.project.entrepreneur.name}</span>
+                              <span>Entrepreneur: {investment.project?.entrepreneur?.name || 'Unknown'}</span>
                           </div>
                         </CardContent>
                         <CardFooter className="flex justify-end gap-2">
@@ -737,7 +796,7 @@ export default function InvestorDashboard() {
             setContactDialogOpen(false)
             setSelectedProject(null)
           }}
-          entrepreneurName={selectedProject.entrepreneur.name}
+          entrepreneurName={selectedProject.entrepreneur?.name || 'Unknown'}
           projectId={selectedProject._id}
           projectTitle={selectedProject.title}
         />
