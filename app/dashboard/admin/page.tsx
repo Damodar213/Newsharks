@@ -464,28 +464,12 @@ export default function AdminDashboard() {
                     <span>Admin Dashboard</span>
                   </Link>
                   <Link
-                    href="/dashboard/admin/users"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Users className="h-5 w-5" />
-                    <span>User Management</span>
-                  </Link>
-                  <Link
                     href="/dashboard/admin/projects"
                     className="flex items-center gap-2 text-lg font-semibold"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <TrendingUp className="h-5 w-5" />
                     <span>Project Management</span>
-                  </Link>
-                  <Link
-                    href="/dashboard/admin/settings"
-                    className="flex items-center gap-2 text-lg font-semibold"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span>Platform Settings</span>
                   </Link>
                 </nav>
               </SheetContent>
@@ -548,33 +532,12 @@ export default function AdminDashboard() {
                 <span>Dashboard</span>
               </Link>
               <Link
-                href="/dashboard/admin/users"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
-                <Users className="h-5 w-5" />
-                <span>User Management</span>
-              </Link>
-              <Link
                 href="/dashboard/admin/projects"
                 className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
               >
                 <TrendingUp className="h-5 w-5" />
                 <span>Project Management</span>
                 <Badge className="ml-auto">{stats.pendingApprovals}</Badge>
-              </Link>
-              <Link
-                href="/dashboard/admin/video-calls"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
-                <Activity className="h-5 w-5" />
-                <span>Video Calls</span>
-              </Link>
-              <Link
-                href="/dashboard/admin/settings"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
-              >
-                <Settings className="h-5 w-5" />
-                <span>Platform Settings</span>
               </Link>
             </nav>
             <div className="mt-auto">
