@@ -65,162 +65,38 @@ interface UserData {
   userType?: string;
 }
 
-// Mock data for users
-const mockUsers = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    role: "entrepreneur",
-    projects: 3,
-    joinDate: "2023-09-10",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Alex Smith",
-    email: "alex@example.com",
-    role: "investor",
-    investments: 2,
-    joinDate: "2023-09-15",
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    role: "entrepreneur",
-    projects: 1,
-    joinDate: "2023-10-05",
-    status: "active",
-  },
-  {
-    id: 4,
-    name: "Michael Chen",
-    email: "michael@example.com",
-    role: "entrepreneur",
-    projects: 1,
-    joinDate: "2023-10-22",
-    status: "pending",
-  },
-  {
-    id: 5,
-    name: "Emma Rodriguez",
-    email: "emma@example.com",
-    role: "entrepreneur",
-    projects: 1,
-    joinDate: "2023-09-28",
-    status: "active",
-  },
-]
-
-// Mock platform statistics
-const mockStats = {
-  totalUsers: 156,
-  totalProjects: 48,
-  totalInvestments: 87,
-  totalFunding: 1250000,
-  activeProjects: 32,
-  completedProjects: 16,
-  averageInvestment: 14367,
-  successRate: 78,
-  userGrowth: 15, // percentage growth this month
-  fundingGrowth: 22, // percentage growth this month
-  videoCalls: 34, // total video calls this month
-  pendingApprovals: 3,
-  monthlyRevenue: 12500,
-  platformFee: 5, // percentage
+interface DashboardUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  projects?: number;
+  investments?: number;
+  joinDate?: string;
+  status?: string;
+  createdAt?: string;
 }
 
-// Mock data for recent transactions
-const mockTransactions = [
-  {
-    id: 1,
-    investor: "Alex Smith",
-    entrepreneur: "John Doe",
-    project: "SmartGarden - IoT Plant Care System",
-    amount: 10000,
-    date: "2023-11-15",
-    status: "completed",
-  },
-  {
-    id: 2,
-    investor: "Robert Johnson",
-    entrepreneur: "Sarah Johnson",
-    project: "EcoPackage - Sustainable Packaging Solution",
-    amount: 15000,
-    date: "2023-11-14",
-    status: "completed",
-  },
-  {
-    id: 3,
-    investor: "Lisa Wang",
-    entrepreneur: "Michael Chen",
-    project: "HealthTrack - Wellness Monitoring App",
-    amount: 5000,
-    date: "2023-11-12",
-    status: "pending",
-  },
-  {
-    id: 4,
-    investor: "David Kim",
-    entrepreneur: "Emma Rodriguez",
-    project: "UrbanFarm - Vertical Farming Technology",
-    amount: 20000,
-    date: "2023-11-10",
-    status: "completed",
-  },
-]
+interface DashboardTransaction {
+  _id: string;
+  investor: string;
+  entrepreneur: string;
+  project: string;
+  amount: number;
+  date: string;
+  status: string;
+}
 
-// Mock data for video calls
-const mockVideoCalls = [
-  {
-    id: 1,
-    investor: "Alex Smith",
-    entrepreneur: "John Doe",
-    project: "SmartGarden - IoT Plant Care System",
-    date: "2023-11-18",
-    time: "14:30",
-    duration: "45 minutes",
-    status: "scheduled",
-  },
-  {
-    id: 2,
-    investor: "Robert Johnson",
-    entrepreneur: "Sarah Johnson",
-    project: "EcoPackage - Sustainable Packaging Solution",
-    date: "2023-11-17",
-    time: "10:00",
-    duration: "32 minutes",
-    status: "completed",
-  },
-  {
-    id: 3,
-    investor: "Lisa Wang",
-    entrepreneur: "Michael Chen",
-    project: "HealthTrack - Wellness Monitoring App",
-    date: "2023-11-16",
-    time: "16:15",
-    duration: "28 minutes",
-    status: "completed",
-  },
-]
-
-// Monthly funding data for chart
-const monthlyFundingData = [
-  { month: "Jan", amount: 120000 },
-  { month: "Feb", amount: 95000 },
-  { month: "Mar", amount: 135000 },
-  { month: "Apr", amount: 105000 },
-  { month: "May", amount: 80000 },
-  { month: "Jun", amount: 95000 },
-  { month: "Jul", amount: 150000 },
-  { month: "Aug", amount: 170000 },
-  { month: "Sep", amount: 190000 },
-  { month: "Oct", amount: 215000 },
-  { month: "Nov", amount: 230000 },
-  { month: "Dec", amount: 150000 },
-]
+interface DashboardVideoCall {
+  _id: string;
+  investor: string;
+  entrepreneur: string;
+  project: string;
+  date: string;
+  time?: string;
+  duration?: string;
+  status: string;
+}
 
 export default function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -245,11 +121,9 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
     platformFee: 5,
   })
-
-  // Mock data for these sections until we implement them
-  const [users] = useState(mockUsers)
-  const [transactions] = useState(mockTransactions)
-  const [videoCalls] = useState(mockVideoCalls)
+  const [users, setUsers] = useState<DashboardUser[]>([])
+  const [transactions, setTransactions] = useState<DashboardTransaction[]>([])
+  const [videoCalls, setVideoCalls] = useState<DashboardVideoCall[]>([])
 
   useEffect(() => {
     setIsClient(true)
@@ -257,59 +131,93 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isClient) return;
-
     // Check for user authentication and admin role
     try {
       const storedUserData = localStorage.getItem('userData');
-      console.log("Admin dashboard - Raw userData from localStorage:", storedUserData);
-      
       if (storedUserData) {
         let parsedUserData;
         try {
           parsedUserData = JSON.parse(storedUserData);
-          console.log("Admin dashboard - Parsed userData:", parsedUserData);
           setUserData(parsedUserData);
-          
-          // Fix: Check for both role and userType for compatibility
           const isAdmin = parsedUserData.role === 'admin' || parsedUserData.userType === 'admin';
-          console.log("Is admin check result:", isAdmin, "Role:", parsedUserData.role, "UserType:", parsedUserData.userType);
-          
           if (!isAdmin) {
-            console.log("Access denied - User is not admin");
-            toast({
-              title: "Access denied",
-              description: "Only administrators can access this page",
-              variant: "destructive",
-            });
+            toast({ title: "Access denied", description: "Only administrators can access this page", variant: "destructive" });
             router.push('/dashboard');
           } else {
-            console.log("Admin access granted, fetching projects");
-            // Fetch pending projects and stats
+            fetchDashboardStats();
             fetchPendingProjects();
           }
         } catch (parseError) {
-          console.error("Error parsing userData JSON:", parseError);
-          toast({
-            title: "Session error",
-            description: "Your session data is corrupted. Please log in again.",
-            variant: "destructive",
-          });
+          toast({ title: "Session error", description: "Your session data is corrupted. Please log in again.", variant: "destructive" });
           router.push('/login');
         }
       } else {
-        console.log("No userData found in localStorage");
-        toast({
-          title: "Login required",
-          description: "Please log in to access the admin panel",
-          variant: "destructive",
-        });
+        toast({ title: "Login required", description: "Please log in to access the admin panel", variant: "destructive" });
         router.push('/login');
       }
     } catch (error) {
-      console.error("Error checking admin authentication:", error);
       router.push('/login');
     }
   }, [router, isClient]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch users
+      const usersRes = await fetch('/api/users');
+      const usersData = await usersRes.json();
+      // Fetch projects
+      const projectsRes = await fetch('/api/projects');
+      const projectsData = await projectsRes.json();
+      // Fetch investments
+      const investmentsRes = await fetch('/api/investments');
+      const investmentsData = await investmentsRes.json();
+      // Fetch video calls (if you have an API, otherwise set to empty array)
+      // const videoCallsRes = await fetch('/api/video-calls');
+      // const videoCallsData = await videoCallsRes.json();
+      // Calculate stats
+      const totalUsers = usersData?.users?.length || 0;
+      const totalProjects = projectsData?.projects?.length || 0;
+      const activeProjects = projectsData?.projects?.filter((p: any) => p.approved).length || 0;
+      const completedProjects = projectsData?.projects?.filter((p: any) => p.completed).length || 0;
+      const pendingApprovals = projectsData?.projects?.filter((p: any) => !p.approved).length || 0;
+      const totalInvestments = investmentsData?.investments?.length || 0;
+      const totalFunding = investmentsData?.investments?.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+      const averageInvestment = totalInvestments > 0 ? Math.round(totalFunding / totalInvestments) : 0;
+      setStats({
+        totalUsers,
+        totalProjects,
+        totalInvestments,
+        totalFunding,
+        activeProjects,
+        completedProjects,
+        averageInvestment,
+        successRate: 78,
+        userGrowth: 15,
+        fundingGrowth: 22,
+        videoCalls: 34,
+        pendingApprovals,
+        monthlyRevenue: 12500,
+        platformFee: 5,
+      });
+      setUsers(usersData?.users || []);
+      setTransactions(investmentsData?.investments?.map((inv: any) => ({
+        _id: inv._id,
+        investor: inv.investor,
+        entrepreneur: inv.entrepreneur?.name ?? '-',
+        project: inv.project,
+        amount: inv.amount,
+        date: inv.date,
+        status: inv.status,
+      })) || []);
+      // If you have a video calls API, map it here. Otherwise, set to []
+      setVideoCalls([]);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to fetch dashboard stats", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchPendingProjects = async () => {
     try {
@@ -434,7 +342,7 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleSuspendUser = (id: number) => {
+  const handleSuspendUser = (id: string) => {
     toast({
       title: "User Suspended",
       description: `User ID ${id} has been suspended.`,
@@ -562,10 +470,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Total Users</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockStats.totalUsers}</div>
+                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
                   <div className="flex items-center text-xs text-green-500">
                     <TrendingUp className="mr-1 h-3 w-3" />
-                    <span>+{mockStats.userGrowth}% this month</span>
+                    <span>+{stats.userGrowth}% this month</span>
                   </div>
                 </CardContent>
               </Card>
@@ -574,10 +482,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockStats.totalProjects}</div>
+                  <div className="text-2xl font-bold">{stats.totalProjects}</div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">{mockStats.activeProjects} active</span>
-                    <span className="text-gray-500">{mockStats.completedProjects} completed</span>
+                    <span className="text-gray-500">{stats.activeProjects} active</span>
+                    <span className="text-gray-500">{stats.completedProjects} completed</span>
                   </div>
                 </CardContent>
               </Card>
@@ -586,10 +494,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Total Investments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockStats.totalInvestments}</div>
+                  <div className="text-2xl font-bold">{stats.totalInvestments}</div>
                   <div className="flex items-center text-xs text-green-500">
                     <TrendingUp className="mr-1 h-3 w-3" />
-                    <span>+{mockStats.fundingGrowth}% this month</span>
+                    <span>+{stats.fundingGrowth}% this month</span>
                   </div>
                 </CardContent>
               </Card>
@@ -598,10 +506,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Total Funding</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹{(mockStats.totalFunding / 1000000).toFixed(2)}M</div>
+                  <div className="text-2xl font-bold">₹{(stats.totalFunding / 1000000).toFixed(2)}M</div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">{mockStats.successRate}% success rate</span>
-                    <span className="text-gray-500">Avg: ₹{mockStats.averageInvestment}</span>
+                    <span className="text-gray-500">{stats.successRate}% success rate</span>
+                    <span className="text-gray-500">Avg: ₹{stats.averageInvestment}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -614,10 +522,10 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹{mockStats.monthlyRevenue.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">₹{stats.monthlyRevenue.toLocaleString()}</div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">This month</span>
-                    <span className="text-gray-500">{mockStats.platformFee}% platform fee</span>
+                    <span className="text-gray-500">{stats.platformFee}% platform fee</span>
                   </div>
                 </CardContent>
               </Card>
@@ -626,7 +534,7 @@ export default function AdminDashboard() {
                   <CardTitle className="text-sm font-medium">Video Calls</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{mockStats.videoCalls}</div>
+                  <div className="text-2xl font-bold">{stats.videoCalls}</div>
                   <div className="text-xs text-gray-500">Total calls this month</div>
                 </CardContent>
               </Card>
@@ -642,27 +550,49 @@ export default function AdminDashboard() {
             </div>
 
             {/* Monthly Funding Chart */}
-            <div className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Funding Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] w-full">
-                    <div className="flex h-full items-end gap-2">
-                      {monthlyFundingData.map((month) => (
-                        <div key={month.month} className="relative flex h-full w-full flex-col justify-end">
-                          <div
-                            className="bg-primary rounded-t w-full"
-                            style={{ height: `${(month.amount / 230000) * 100}%` }}
-                          ></div>
-                          <span className="mt-2 text-xs text-center">{month.month}</span>
-                        </div>
-                      ))}
+            <div className="mt-8">
+              <h2 className="text-xl font-bold mb-4">Monthly Funding Overview</h2>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex flex-col items-center">
+                  <div className="w-full max-w-2xl">
+                    {/* Static bar chart or static data */}
+                    <div className="flex h-40 items-end gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 60 }}></div>
+                        <span className="text-xs mt-2">Jan</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 80 }}></div>
+                        <span className="text-xs mt-2">Feb</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 100 }}></div>
+                        <span className="text-xs mt-2">Mar</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 70 }}></div>
+                        <span className="text-xs mt-2">Apr</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 90 }}></div>
+                        <span className="text-xs mt-2">May</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="bg-blue-500 w-8" style={{ height: 120 }}></div>
+                        <span className="text-xs mt-2">Jun</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between mt-4 text-xs text-gray-500">
+                      <span>₹1.2L</span>
+                      <span>₹1.5L</span>
+                      <span>₹1.8L</span>
+                      <span>₹1.3L</span>
+                      <span>₹1.6L</span>
+                      <span>₹2.0L</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6">
@@ -756,17 +686,15 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mockUsers.map((user) => (
-                            <TableRow key={user.id}>
+                          {users.map((user) => (
+                            <TableRow key={user._id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell>{user.email}</TableCell>
                               <TableCell className="capitalize">{user.role}</TableCell>
-                              <TableCell>{user.role === "entrepreneur" ? user.projects : user.investments}</TableCell>
-                              <TableCell>{user.joinDate}</TableCell>
+                              <TableCell>{user.role === "entrepreneur" ? user.projects ?? '-' : user.investments ?? '-'}</TableCell>
+                              <TableCell>{user.joinDate ? user.joinDate : (user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-")}</TableCell>
                               <TableCell>
-                                <Badge variant={user.status === "active" ? "outline" : "secondary"}>
-                                  {user.status}
-                                </Badge>
+                                <Badge variant={user.status === "active" ? "outline" : "secondary"}>{user.status ?? "-"}</Badge>
                               </TableCell>
                               <TableCell className="text-right">
                                 <DropdownMenu>
@@ -779,10 +707,7 @@ export default function AdminDashboard() {
                                     <DropdownMenuItem>View Details</DropdownMenuItem>
                                     <DropdownMenuItem>Edit User</DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() => handleSuspendUser(user.id)}
-                                    >
+                                    <DropdownMenuItem className="text-destructive" onClick={() => handleSuspendUser(user._id)}>
                                       Suspend User
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -819,21 +744,15 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mockTransactions.map((transaction) => (
-                            <TableRow key={transaction.id}>
+                          {transactions.map((transaction) => (
+                            <TableRow key={transaction._id}>
                               <TableCell className="font-medium">{transaction.investor}</TableCell>
                               <TableCell>{transaction.entrepreneur}</TableCell>
                               <TableCell>{transaction.project}</TableCell>
                               <TableCell>₹{transaction.amount.toLocaleString()}</TableCell>
-                              <TableCell>{transaction.date}</TableCell>
-                              <TableCell>
-                                <Badge variant={transaction.status === "completed" ? "outline" : "secondary"}>
-                                  {transaction.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                ₹{((transaction.amount * mockStats.platformFee) / 100).toLocaleString()}
-                              </TableCell>
+                              <TableCell>{transaction.date ? new Date(transaction.date).toLocaleDateString() : '-'}</TableCell>
+                              <TableCell>{transaction.status}</TableCell>
+                              <TableCell className="text-right">₹{((transaction.amount * stats.platformFee) / 100).toLocaleString()}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -865,19 +784,15 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mockVideoCalls.map((call) => (
-                            <TableRow key={call.id}>
+                          {videoCalls.map((call) => (
+                            <TableRow key={call._id}>
                               <TableCell className="font-medium">{call.investor}</TableCell>
                               <TableCell>{call.entrepreneur}</TableCell>
                               <TableCell>{call.project}</TableCell>
-                              <TableCell>{call.date}</TableCell>
-                              <TableCell>{call.time}</TableCell>
-                              <TableCell>{call.duration}</TableCell>
-                              <TableCell>
-                                <Badge variant={call.status === "completed" ? "outline" : "secondary"}>
-                                  {call.status}
-                                </Badge>
-                              </TableCell>
+                              <TableCell>{call.date ? new Date(call.date).toLocaleDateString() : '-'}</TableCell>
+                              <TableCell>{call.time ?? '-'}</TableCell>
+                              <TableCell>{call.duration ?? '-'}</TableCell>
+                              <TableCell>{call.status}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

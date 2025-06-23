@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -140,6 +140,7 @@ export default function EntrepreneurDashboard() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64 sm:max-w-sm">
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <nav className="flex flex-col gap-4 mt-8">
                   <Link
                     href="/dashboard/entrepreneur"
@@ -254,7 +255,6 @@ export default function EntrepreneurDashboard() {
               >
                 <MessageSquare className="h-5 w-5" />
                 <span>Messages</span>
-                <Badge className="ml-auto">3</Badge>
               </Link>
               <Link
                 href="/dashboard/entrepreneur/video-calls"
@@ -262,7 +262,6 @@ export default function EntrepreneurDashboard() {
               >
                 <Video className="h-5 w-5" />
                 <span>Video Calls</span>
-                <Badge className="ml-auto">2</Badge>
               </Link>
               <Link
                 href="/dashboard/entrepreneur/settings"

@@ -83,7 +83,6 @@ export default function LoginPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="john@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   required
